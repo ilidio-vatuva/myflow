@@ -40,13 +40,14 @@ def get_events(creds):
 
         # Call the Calendar API
         now = datetime.datetime.now(tz=datetime.timezone.utc).isoformat()
-        print("Getting the upcoming 10 events")
+        print("Getting the upcoming events for the next 30 days")
+        time_max = (datetime.datetime.now(tz=datetime.timezone.utc) + datetime.timedelta(days=30)).isoformat()
         events_result = (
             service.events()
             .list(
                 calendarId="primary",
                 timeMin=now,
-                maxResults=10,
+                timeMax=time_max,
                 singleEvents=True,
                 orderBy="startTime",
             )
@@ -61,7 +62,6 @@ def get_events(creds):
         # Prints the start and name of the next 10 events
         for event in events:
           start = event["start"].get("dateTime", event["start"].get("date"))
-          print(start, event["summary"])
         return events
 
     except HttpError as error:
