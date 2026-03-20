@@ -1,16 +1,33 @@
 import os
 
-from fastapi import FastAPI
-from google_auth_oauthlib.flow import Flow
+from fastapi import FastAPI, Request
 from dotenv import load_dotenv
 from database import update_user, get_user_by_telegram_id, init_db
+from oauth import get_oauth_flow
 from task_input import get_bot
+from telegram import Update
+from task_input import app as telegram_app
+from contextlib import asynccontextmanager
 
 load_dotenv()
 
 app = FastAPI()
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # startup
+    webhook_url = os.getenv('WEBHOOK_URL')
+    await telegram_app.initialize()
+    await telegram_app.bot.set_webhook(f"{webhook_url}/telegram/webhook")
+    yield
+    # shutdown
+    await telegram_app.shutdown()
+
+app = FastAPI(lifespan=lifespan)
+
 @app.get("/oauth/callback")
 async def oauth_callback(code: str, state: str):
+    os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'  # only for development!
     flow = get_oauth_flow()
     flow.fetch_token(code=code)
     token = flow.credentials
@@ -24,16 +41,12 @@ async def oauth_callback(code: str, state: str):
         return {"message": "Google Calendar connected successfully!"}
     else:
         return {"message": "User not found. Please contact the administrator."}
+    
+@app.post("/telegram/webhook")
+async def telegram_webhook(request: Request):
+    data = await request.json()
+    update = Update.de_json(data, telegram_app.bot)
+    await telegram_app.process_update(update)
+    return {"OK": True}    
 
-def generate_oauth_url(telegram_user_id):
-    flow = get_oauth_flow()
-    auth_url, _ = flow.authorization_url(prompt='consent', state=str(telegram_user_id))
-    return auth_url
 
-def get_oauth_flow():
-    webhook_url = os.getenv('WEBHOOK_URL')
-    return Flow.from_client_secrets_file(
-        'web_credentials.json',
-        scopes=['https://www.googleapis.com/auth/calendar.events'],
-        redirect_uri=f'{webhook_url}/oauth/callback'
-    )

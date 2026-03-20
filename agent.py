@@ -5,9 +5,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-def execute_task(task, events):
-    with open("knowledge/goals.md", "r") as f:
-        goals = f.read()
+def execute_task(metadata, events):
 
     with open("knowledge/system_prompt.md", "r") as f:
         system_prompt = f.read()
@@ -15,7 +13,7 @@ def execute_task(task, events):
     messages = [
         {
           "role": "user",
-           "content": f"""Here are my goals and projects: {goals} New task: {task} And events: {events}""",
+           "content": f"""Here are all task details: {metadata} And events: {events}""",
         }
     ]
 
