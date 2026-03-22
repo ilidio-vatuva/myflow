@@ -7,7 +7,8 @@ from telegram.ext import ApplicationBuilder, MessageHandler, filters, ContextTyp
 from dotenv import load_dotenv
 from database import get_goal_by_id, get_project_by_id, init_db, insert_goal, insert_project, insert_user, get_user_by_telegram_id, get_goals_by_user_id, get_projects_by_goal_id, insert_task
 from session import SessionState, get_session, clear_session, update_session
-from prompts import send_due_date_prompt, send_goal_importance_prompt, send_oauth_prompt, send_project_daily_hours_prompt, send_project_frequency_prompt, send_project_monthly_hours_prompt, send_project_weekly_hours_prompt, send_projects_prompt, send_goals_prompt, send_deadline_prompt
+from prompts import send_due_date_prompt, send_goal_importance_prompt, send_oauth_prompt, send_preferred_language_prompt, send_project_daily_hours_prompt, send_project_frequency_prompt, send_project_monthly_hours_prompt, send_project_weekly_hours_prompt, send_projects_prompt, send_goals_prompt, send_deadline_prompt
+from translations import t
 
 load_dotenv()
 
@@ -27,22 +28,30 @@ def get_bot():
     return ApplicationBuilder().token(token).build()
 
 async def reply_telegram(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    
+    print(f"Received message: {update.message.text} from user: {update.message.from_user.id}")
     conn , cursor = init_db()
     telegram_user_id = update.message.from_user.id
     
     user = get_user_by_telegram_id(cursor, telegram_user_id)
 
     if not user:
-        user_id = insert_user(conn, cursor, update.message.from_user.username, telegram_user_id)
-        if not user_id:
-            await update.message.reply_text("An error occurred while registering you. Please contact the administrator.")
+        session = get_session(telegram_user_id)
+        if session["state"] == SessionState.WAITING_FOR_NICKNAME:
+            preferred_language = session.get("preferred_language", "en-US")
+            nickname = update.message.text
+            user_id = insert_user(conn, cursor, nickname, telegram_user_id, None, preferred_language)
+            if not user_id:
+                await update.message.reply_text(t("registration_error", preferred_language))
+                return
+            await send_oauth_prompt(update.message, update.message.from_user.id, t("oauth_welcome_nickname", preferred_language).format(nickname=nickname))
             return
-        await send_oauth_prompt(update.message, update.message.from_user.id, "Welcome to Sir Agent 👑! 👋 Please connect your Google Calendar to get started:")
-        return
+        else:
+            update_session(telegram_user_id, {"state": SessionState.WAITING_FOR_PREFERRED_LANGUAGE})
+            await send_preferred_language_prompt(update.message)
+            return
     else:
         if user and not user.google_token:
-            await send_oauth_prompt(update.message, update.message.from_user.id, "Please connect your Google Calendar to use Sir Agent 👑:")
+            await send_oauth_prompt(update.message, update.message.from_user.id, t("oauth_reconnect", user.language))
             return
         else:
             session = get_session(telegram_user_id)
@@ -55,25 +64,25 @@ async def reply_telegram(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 for goal in goals:
                     projects = get_projects_by_goal_id(cursor, goal.id)
                     user_projects.extend(projects)
-                await send_projects_prompt(update.message, user_projects)
+                await send_projects_prompt(update.message, user_projects, user.language)
             elif session["state"] == SessionState.WAITING_FOR_PROJECT_NAME:
                 update_session(telegram_user_id, {"project_name": update.message.text })
                 update_session(telegram_user_id, {"state": SessionState.WAITING_FOR_PROJECT_DESC})
-                await update.message.reply_text("Please provide a description for your project 📁")
+                await update.message.reply_text(t("project_description_prompt", user.language))
             elif session["state"] == SessionState.WAITING_FOR_PROJECT_DESC:
                 update_session(telegram_user_id, {"project_description": update.message.text})
                 update_session(telegram_user_id, {"state": SessionState.WAITING_FOR_PROJECT_FREQUENCY})
-                await send_project_frequency_prompt(update.message)
+                await send_project_frequency_prompt(update.message, user.language)
             elif session["state"] == SessionState.WAITING_FOR_GOAL_NAME:
                 update_session(telegram_user_id, {"goal_name": update.message.text})
                 update_session(telegram_user_id, {"state": SessionState.WAITING_FOR_GOAL_DESC})
-                await update.message.reply_text("Please provide a description for your goal 🎯")
+                await update.message.reply_text(t("goal_description_prompt", user.language))
             elif session["state"] == SessionState.WAITING_FOR_GOAL_DESC:
                 update_session(telegram_user_id, {"goal_description": update.message.text})
                 update_session(telegram_user_id, {"state": SessionState.WAITING_FOR_GOAL_IMPORTANCE})
-                await send_goal_importance_prompt(update.message)
+                await send_goal_importance_prompt(update.message, user.language)
             else:
-                await update.message.reply_text("An error occurred while processing your request. Please try again.")
+                await update.message.reply_text(t("processing_error", user.language))
                 clear_session(telegram_user_id)
                 return
 
@@ -91,14 +100,14 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if data == "new_project":
 
         goals = get_goals_by_user_id(cursor=cursor, user_id=user.id)
-        await send_goals_prompt(query.message, goals)
+        await send_goals_prompt(query.message, goals, user.language)
 
     elif data.startswith("project_"):
 
         project_id = int(data.split("_")[1])
         update_session(telegram_user_id, {"project": project_id})
         update_session(telegram_user_id, {"state": SessionState.WAITING_FOR_DEADLINE})
-        await send_deadline_prompt(query.message)
+        await send_deadline_prompt(query.message, user.language)
 
     elif data.startswith("deadline_"):
 
@@ -114,7 +123,7 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     "goal_name": goal.name, "goal_description": goal.description, "goal_importance": goal.importance, 
                     "project_name": project.name, "project_description": project.description, "project_due_date": project.due_date, "project_hours": project.hours, "project_frequency": project.frequency,
                     "task": task, "deadline": deadline }
-        await query.message.reply_text("⏳ Sir Agent is scheduling your task...")
+        await query.message.reply_text(t("scheduling_task", user.language))
         result = process_task(user.google_token, metadata)
         insert_task(
             conn, cursor,
@@ -134,18 +143,18 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
         update_session(telegram_user_id, {"project_frequency": frequency})
         update_session(telegram_user_id, {"state": SessionState.WAITING_FOR_PROJECT_HOURS})
         if frequency == "daily":
-            await send_project_daily_hours_prompt(query.message)
+            await send_project_daily_hours_prompt(query.message, user.language)
         elif frequency == "weekly":
-            await send_project_weekly_hours_prompt(query.message)
+            await send_project_weekly_hours_prompt(query.message, user.language)
         elif frequency == "monthly":
-            await send_project_monthly_hours_prompt(query.message)
+            await send_project_monthly_hours_prompt(query.message, user.language)
 
     elif data.startswith("hours_"):
 
         hours = int(data.split("_")[1])
         update_session(telegram_user_id, {"project_hours": hours})
         update_session(telegram_user_id, {"state": SessionState.WAITING_FOR_PROJECT_DUE_DATE})
-        await send_due_date_prompt(query.message)
+        await send_due_date_prompt(query.message, user.language)
 
     elif data.startswith("due_date_"):
 
@@ -160,16 +169,16 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         project_id = insert_project(conn, cursor, goal_id, project_name, project_description, due_date, project_hours, project_frequency)
         if not project_id:
-            await query.message.reply_text("An error occurred while creating the project. Please try again.")
+            await query.message.reply_text(t("project_creation_error", user.language))
             clear_session(telegram_user_id)
             return
         update_session(telegram_user_id, {"project": project_id})
         update_session(telegram_user_id, {"state": SessionState.WAITING_FOR_DEADLINE})
-        await send_deadline_prompt(query.message)
+        await send_deadline_prompt(query.message, user.language)
 
     elif data == "new_goal":
         update_session(telegram_user_id, {"state": SessionState.WAITING_FOR_GOAL_NAME})
-        await query.message.reply_text("What is the name of your new goal? 🎯")
+        await query.message.reply_text(t("new_goal_name", user.language))
 
     elif data.startswith("goal_importance_"):
 
@@ -178,24 +187,36 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
         goal_description = session.get("goal_description")
         goal_id = insert_goal(conn, cursor, user.id, goal_name, importance, goal_description)
         if not goal_id:
-            await query.message.reply_text("An error occurred while creating the goal. Please try again.")
+            await query.message.reply_text(t("goal_creation_error", user.language))
             clear_session(telegram_user_id)
             return
         update_session(telegram_user_id, {"goal_id": goal_id})
         update_session(telegram_user_id, {"state": SessionState.WAITING_FOR_PROJECT_NAME})
-        await query.message.reply_text("What is the name of your new project? 📁")
+        await query.message.reply_text(t("new_project_name", user.language))
 
     elif data.startswith("goalId_"):
 
         goal_id = int(data.split("_")[1])
         update_session(telegram_user_id, {"goal_id": goal_id})
         update_session(telegram_user_id, {"state": SessionState.WAITING_FOR_PROJECT_NAME})
-        await query.message.reply_text("What is the name of your new project? 📁")
-            
+        await query.message.reply_text(t("new_project_name", user.language))
+    elif data.startswith("language_"):
+
+        language = data.split("_")[1]
+        update_session(telegram_user_id, {"preferred_language": language})
+        update_session(telegram_user_id, {"state": SessionState.WAITING_FOR_NICKNAME})
+        await query.message.reply_text(t("welcome", language))            
+
+async def error_handler(update, context):
+    print(f"Error: {context.error}")
+    import traceback
+    traceback.print_exc()
+
 
 token=os.getenv('TELEGRAM_BOT_TOKEN')
 app = ApplicationBuilder().token(token).build()
 
 app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, reply_telegram))
 app.add_handler(CallbackQueryHandler(handle_button))
+app.add_error_handler(error_handler)
 

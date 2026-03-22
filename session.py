@@ -4,6 +4,11 @@ from enum import Enum
 user_sessions = {}
 
 class SessionState(Enum):
+    # New user flow
+    WAITING_FOR_NICKNAME = "waiting_for_nickname"
+    WAITING_FOR_PREFERRED_LANGUAGE = "waiting_for_preferred_language"
+
+    # New task flow
     WAITING_FOR_TASK = "waiting_for_task"
     WAITING_FOR_PROJECT = "waiting_for_project"
     WAITING_FOR_DEADLINE = "waiting_for_deadline"

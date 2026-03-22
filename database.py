@@ -19,7 +19,8 @@ def create_tables(conn, cursor):
             id integer primary key autoincrement,
             nickname text not null,
             telegram_id text not null unique,
-            google_token text
+            google_token text,
+            language text default 'en-US'
         )
     ''')
     cursor.execute('''
@@ -66,11 +67,11 @@ def create_tables(conn, cursor):
     conn.commit()
 
 # Inserts
-def insert_user(conn, cursor, nickname, telegram_id, google_token=None):
+def insert_user(conn, cursor, nickname, telegram_id, google_token=None, language='en-US'):
     cursor.execute('''
-        insert into user (nickname, telegram_id, google_token)
-        values (?, ?, ?)
-    ''', (nickname, telegram_id, google_token))
+        insert into user (nickname, telegram_id, google_token, language)
+        values (?, ?, ?, ?)
+    ''', (nickname, telegram_id, google_token, language))
     conn.commit()
     return cursor.lastrowid
 
@@ -113,7 +114,7 @@ def update_task_status(conn, cursor, task_id, status, spent_time=None):
     ''', (status, spent_time, task_id))
     conn.commit()
 
-def update_user(conn, cursor, user_id, nickname=None, telegram_id=None, google_token=None):
+def update_user(conn, cursor, user_id, nickname=None, telegram_id=None, google_token=None, language=None):
     fields = []
     values = []
     if nickname:
@@ -125,6 +126,10 @@ def update_user(conn, cursor, user_id, nickname=None, telegram_id=None, google_t
     if google_token:
         fields.append("google_token = ?")
         values.append(google_token)
+    if language:
+        fields.append("language = ?")
+        values.append(language)
+
     values.append(user_id)
     cursor.execute(f'''
         update user set {', '.join(fields)} where id = ?
@@ -134,11 +139,11 @@ def update_user(conn, cursor, user_id, nickname=None, telegram_id=None, google_t
 # Queries
 def get_user_by_telegram_id(cursor, telegram_id) -> Optional[User]:
     cursor.execute('''
-        select id, nickname, telegram_id, google_token from user where telegram_id = ?
+        select id, nickname, telegram_id, google_token, language from user where telegram_id = ?
     ''', (telegram_id,))
     row = cursor.fetchone()
     if row:
-        return User(id=row[0], nickname=row[1], telegram_id=row[2], google_token=row[3])
+        return User(id=row[0], nickname=row[1], telegram_id=row[2], google_token=row[3], language=row[4])
     return None
 
 def get_goals_by_user_id(cursor, user_id) -> list[Goal]:

@@ -6,7 +6,8 @@ class User:
     id: int
     nickname: str
     telegram_id: str
-    google_token: Optional[str] = None
+    google_token: Optional[str] = None,
+    language: Optional[str] = None
 
 @dataclass
 class Goal:

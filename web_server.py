@@ -7,7 +7,9 @@ from oauth import fetch_token
 from task_input import get_bot
 from telegram import Update
 from task_input import app as telegram_app
+from translations import t
 from contextlib import asynccontextmanager
+from session import get_session, clear_session
 
 load_dotenv()
 
@@ -35,7 +37,10 @@ async def oauth_callback(code: str, state: str):
     if user:
         update_user(conn, cursor, user.id, google_token=token.to_json())
         bot = get_bot()
-        await bot.bot.send_message(chat_id=user_telegram_id, text="✅ Google Calendar connected! You're ready to use Sir Agent!")
+        session = get_session(user_telegram_id)
+        preferred_language = session.get("preferred_language", user.language)
+        clear_session(user_telegram_id)  # clear session after successful connection
+        await bot.bot.send_message(chat_id=user_telegram_id, text=t("calendar_connected", preferred_language))
         return {"message": "Google Calendar connected successfully!"}
     else:
         return {"message": "User not found. Please contact the administrator."}

@@ -39,12 +39,13 @@ def get_events(token):
         print(f"An error occurred: {error}")
 
 
-def create_event(token, title, description, start_time, end_time):
+def create_event(token, title, description, start_time, end_time, transparent=False):
   event = {
     "summary": title,
     "description": description,
     "start": {"dateTime": start_time, "timeZone": "Europe/Madrid"},
     "end": {"dateTime": end_time, "timeZone": "Europe/Madrid"},
+    "transparency": "transparent" if transparent else "opaque"
   }
   try:
       service = get_service(token)
