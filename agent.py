@@ -1,12 +1,11 @@
-from importlib import metadata
-
 import anthropic
 import json
 import os
 
 from dotenv import load_dotenv
 
-load_dotenv()
+if os.path.exists('.env'):
+    load_dotenv()
 
 def execute_task(metadata, events):
 
