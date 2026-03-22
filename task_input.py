@@ -114,9 +114,17 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     "goal_name": goal.name, "goal_description": goal.description, "goal_importance": goal.importance, 
                     "project_name": project.name, "project_description": project.description, "project_due_date": project.due_date, "project_hours": project.hours, "project_frequency": project.frequency,
                     "task": task, "deadline": deadline }
-        
+        await query.message.reply_text("⏳ Sir Agent is scheduling your task...")
         result = process_task(user.google_token, metadata)
-        # TODO: handle result and save task
+        insert_task(
+            conn, cursor,
+            project_id=project_id,
+            title=result["calendar_event"]["title"],
+            status="pending",
+            start_date=result["calendar_event"]["suggested_start_time"],
+            end_date=result["calendar_event"]["suggested_end_time"],
+            planned_duration=result["calendar_event"]["duration"],
+        )
         await query.message.reply_text(format_output_msg(result))
         clear_session(telegram_user_id)
 
