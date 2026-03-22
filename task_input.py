@@ -25,7 +25,6 @@ def format_output_msg(data):
 
 def get_bot():
     token = os.getenv('TELEGRAM_BOT_TOKEN')
-    print(f"Token length: {len(token) if token else 'None'}")
     return ApplicationBuilder().token(token).build()
 
 async def reply_telegram(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -215,7 +214,8 @@ async def error_handler(update, context):
 
 
 token=os.getenv('TELEGRAM_BOT_TOKEN')
-app = ApplicationBuilder().token(token).build()
+print(f"Token available: {token is not None}")
+app = ApplicationBuilder().token(token).build() if token else None
 
 app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, reply_telegram))
 app.add_handler(CallbackQueryHandler(handle_button))
