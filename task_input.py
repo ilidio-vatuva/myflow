@@ -10,7 +10,7 @@ from session import SessionState, get_session, clear_session, update_session
 from prompts import send_due_date_prompt, send_goal_importance_prompt, send_oauth_prompt, send_preferred_language_prompt, send_project_daily_hours_prompt, send_project_frequency_prompt, send_project_monthly_hours_prompt, send_project_weekly_hours_prompt, send_projects_prompt, send_goals_prompt, send_deadline_prompt
 from translations import t
 
-load_dotenv()
+load_dotenv(override=False)
 
 def format_output_msg(data):
     assumptions=''
