@@ -25,6 +25,7 @@ def format_output_msg(data):
 
 def get_bot():
     token = os.getenv('TELEGRAM_BOT_TOKEN')
+    print(f"Token length: {len(token) if token else 'None'}")
     return ApplicationBuilder().token(token).build()
 
 async def reply_telegram(update: Update, context: ContextTypes.DEFAULT_TYPE):
