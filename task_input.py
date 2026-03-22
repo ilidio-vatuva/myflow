@@ -1,3 +1,4 @@
+import datetime
 import os
 
 from telegram import Update
@@ -108,7 +109,9 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
         project = get_project_by_id(cursor, project_id)
         goal = get_goal_by_id(cursor, project.goal_id)
 
-        metadata = {"goal_name": goal.name, "goal_description": goal.description, "goal_importance": goal.importance, 
+        metadata = {
+                    "current_date": datetime.datetime.now().isoformat(),
+                    "goal_name": goal.name, "goal_description": goal.description, "goal_importance": goal.importance, 
                     "project_name": project.name, "project_description": project.description, "project_due_date": project.due_date, "project_hours": project.hours, "project_frequency": project.frequency,
                     "task": task, "deadline": deadline }
         
