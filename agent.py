@@ -1,5 +1,8 @@
+from importlib import metadata
+
 import anthropic
 import json
+import os
 
 from dotenv import load_dotenv
 
@@ -7,8 +10,10 @@ load_dotenv()
 
 def execute_task(metadata, events):
 
-    with open("knowledge/system_prompt.md", "r") as f:
-        system_prompt = f.read()
+    system_prompt = os.getenv('SYSTEM_PROMPT')
+    if not system_prompt:
+        with open("knowledge/system_prompt.md", "r") as f:
+            system_prompt = f.read()
 
     messages = [
         {
