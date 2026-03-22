@@ -1,14 +1,17 @@
 import sqlite3
+import os
+
 from models import User, Goal, Project, Task, Conversation
 from typing import Optional
 
 _conn = None
 _cursor = None
+DB_PATH = os.getenv('DB_PATH', 'myflow.db')
 
 def init_db():
     global _conn, _cursor
     if not _conn:
-        _conn = sqlite3.connect('myflow.db')
+        _conn = sqlite3.connect(DB_PATH)
         _cursor = _conn.cursor()
         create_tables(_conn, _cursor)
     return _conn, _cursor

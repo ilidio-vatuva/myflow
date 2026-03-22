@@ -1,0 +1,8 @@
+venv/
+.env
+myflow.db
+token.json
+__pycache__/
+*.pyc
+.git/
+web_credentials.json
