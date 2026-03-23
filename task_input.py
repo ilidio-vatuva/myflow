@@ -120,6 +120,8 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         metadata = {
                     "current_date": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+                    "current_time_utc": datetime.datetime.now(datetime.timezone.utc).strftime("%H:%M UTC"),
+                    "earliest_schedule_time": (datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(minutes=30)).isoformat(),
                     "goal_name": goal.name, "goal_description": goal.description, "goal_importance": goal.importance, 
                     "project_name": project.name, "project_description": project.description, "project_due_date": project.due_date, "project_hours": project.hours, "project_frequency": project.frequency,
                     "task": task, "deadline": deadline }
