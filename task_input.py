@@ -1,13 +1,13 @@
 import datetime
 import os
 
-from telegram import Update
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from main import process_task
-from telegram.ext import ApplicationBuilder, MessageHandler, filters, ContextTypes, CallbackQueryHandler
+from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes, CallbackQueryHandler
 from dotenv import load_dotenv
-from database import get_goal_by_id, get_project_by_id, init_db, insert_goal, insert_project, insert_user, get_user_by_telegram_id, get_goals_by_user_id, get_projects_by_goal_id, insert_task
+from database import delete_goal, get_goal_by_id, get_project_by_id, init_db, insert_goal, insert_project, insert_user, get_user_by_telegram_id, get_goals_by_user_id, get_projects_by_goal_id, insert_task, update_goal
 from session import SessionState, get_session, clear_session, update_session
-from prompts import send_due_date_prompt, send_goal_importance_prompt, send_oauth_prompt, send_preferred_language_prompt, send_project_daily_hours_prompt, send_project_frequency_prompt, send_project_monthly_hours_prompt, send_project_weekly_hours_prompt, send_projects_prompt, send_goals_prompt, send_deadline_prompt
+from prompts import send_confirmation_prompt, send_due_date_prompt, send_edit_goal_importance_prompt, send_edit_goal_menu, send_goal_importance_prompt, send_goals_list, send_main_menu, send_oauth_prompt, send_preferred_language_prompt, send_project_daily_hours_prompt, send_project_frequency_prompt, send_project_monthly_hours_prompt, send_project_weekly_hours_prompt, send_projects_prompt, send_goals_prompt, send_deadline_prompt
 from translations import t
 
 if os.path.exists('.env'):
@@ -81,6 +81,20 @@ async def reply_telegram(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 update_session(telegram_user_id, {"goal_description": update.message.text})
                 update_session(telegram_user_id, {"state": SessionState.WAITING_FOR_GOAL_IMPORTANCE})
                 await send_goal_importance_prompt(update.message, user.language)
+            elif session["state"] == SessionState.EDITING_GOAL_NAME:
+                goal_id = session.get("goal_id")
+                update_goal(conn, cursor, goal_id, name=update.message.text)
+                clear_session(telegram_user_id)
+                await update.message.reply_text(t("goal_updated", user.language))
+                goals = get_goals_by_user_id(cursor, user.id)
+                await send_goals_list(update.message, goals, user.language)
+            elif session["state"] == SessionState.EDITING_GOAL_DESC:
+                goal_id = session.get("goal_id")
+                update_goal(conn, cursor, goal_id, description=update.message.text)
+                clear_session(telegram_user_id)
+                await update.message.reply_text(t("goal_updated", user.language))
+                goals = get_goals_by_user_id(cursor, user.id)
+                await send_goals_list(update.message, goals, user.language)
             else:
                 await update.message.reply_text(t("processing_error", user.language))
                 clear_session(telegram_user_id)
@@ -209,18 +223,98 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
         update_session(telegram_user_id, {"preferred_language": language})
         update_session(telegram_user_id, {"state": SessionState.WAITING_FOR_NICKNAME})
         await query.message.reply_text(t("welcome", language))            
+    elif data == "menu_new_task":
+    
+        clear_session(telegram_user_id)
+        await query.message.reply_text(t("send_task", user.language))
+
+    elif data == "menu_goals":
+        
+        goals = get_goals_by_user_id(cursor, user.id)
+        await send_goals_list(query.message, goals, user.language)
+    elif data.startswith("edit_goal_importance_"):
+        importance = int(data.split("_")[-1])
+        goal_id = session.get("goal_id")
+        update_goal(conn, cursor, goal_id, importance=importance)
+        clear_session(telegram_user_id)
+        await query.message.reply_text(t("goal_updated", user.language))
+        goals = get_goals_by_user_id(cursor, user.id)
+        await send_goals_list(query.message, goals, user.language)
+    elif data.startswith("edit_goal_"):
+
+        goal_id = int(data.split("_")[-1])
+        goal = get_goal_by_id(cursor, goal_id)
+        update_session(telegram_user_id, {"goal_id": goal_id})
+        await send_edit_goal_menu(query.message, goal, user.language)
+    elif data.startswith("delete_goal_"):
+
+        goal_id = int(data.split("_")[-1])
+        update_session(telegram_user_id, {"goal_id": goal_id})
+        await send_confirmation_prompt(query.message, "delete_goal", user.language)
+    elif data.startswith("goal_projects_"):
+
+        goal_id = int(data.split("_")[-1])
+        projects = get_projects_by_goal_id(cursor, goal_id)
+        await send_projects_prompt(query.message, projects, user.language)
+    elif data.startswith("confirm_delete_goal_"):
+
+        goal_id = session.get("goal_id")
+        delete_goal(conn, cursor, goal_id)
+        await query.message.reply_text(t("goal_deleted", user.language))
+    elif data.startswith("egoal_name_"):
+
+        goal_id = int(data.split("_")[-1])
+        update_session(telegram_user_id, {"goal_id": goal_id})
+        update_session(telegram_user_id, {"state": SessionState.EDITING_GOAL_NAME})
+        await query.message.reply_text(t("edit_goal_name", user.language))
+    elif data.startswith("egoal_desc_"):
+
+        goal_id = int(data.split("_")[-1])
+        update_session(telegram_user_id, {"goal_id": goal_id})
+        update_session(telegram_user_id, {"state": SessionState.EDITING_GOAL_DESC})
+        await query.message.reply_text(t("edit_goal_desc", user.language))
+
+    elif data.startswith("egoal_importance_"):
+
+        goal_id = int(data.split("_")[-1])
+        update_session(telegram_user_id, {"goal_id": goal_id})
+        update_session(telegram_user_id, {"state": SessionState.EDITING_GOAL_IMPORTANCE})
+        await send_edit_goal_importance_prompt(query.message, user.language)
+    elif data.startswith("edit_goal_importance_"):
+
+        importance = int(data.split("_")[-1])
+        goal_id = session.get("goal_id")
+        update_goal(conn, cursor, goal_id, importance=importance)
+        clear_session(telegram_user_id)
+        await query.message.reply_text(t("goal_updated", user.language))
+
+        goals = get_goals_by_user_id(cursor, user.id)
+        await send_goals_list(query.message, goals, user.language)
 
 async def error_handler(update, context):
     print(f"Error: {context.error}")
     import traceback
     traceback.print_exc()
 
+async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    conn, cursor = init_db()
+    telegram_user_id = update.message.from_user.id
+    user = get_user_by_telegram_id(cursor, telegram_user_id)
+    
+    if not user:
+        # New user — start onboarding
+        update_session(telegram_user_id, {"state": SessionState.WAITING_FOR_PREFERRED_LANGUAGE})
+        await send_preferred_language_prompt(update.message)
+        return
+    await send_main_menu(update.message, user)
+
+
 
 token=os.getenv('TELEGRAM_BOT_TOKEN')
-print(f"Token available: {token is not None}")
 app = ApplicationBuilder().token(token).build() if token else None
 
 app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, reply_telegram))
 app.add_handler(CallbackQueryHandler(handle_button))
 app.add_error_handler(error_handler)
+app.add_handler(CommandHandler("start", start_command))
 

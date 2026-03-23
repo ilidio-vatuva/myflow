@@ -41,6 +41,17 @@ async def send_goal_importance_prompt(sender, language="en-US"):
     reply_markup = InlineKeyboardMarkup(keyboard)
     await sender.reply_text(t("goal_importance", language), reply_markup=reply_markup)
 
+async def send_edit_goal_importance_prompt(sender, language="en-US"):
+    keyboard = [
+        [
+            InlineKeyboardButton(t("btn_importance_low", language), callback_data="edit_goal_importance_1"),
+            InlineKeyboardButton(t("btn_importance_medium", language), callback_data="edit_goal_importance_2"),
+            InlineKeyboardButton(t("btn_importance_high", language), callback_data="edit_goal_importance_3")
+        ]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await sender.reply_text(t("goal_importance", language), reply_markup=reply_markup)
+
 async def send_deadline_prompt(sender, language="en-US"):
     keyboard = [
         [
@@ -144,3 +155,59 @@ async def send_preferred_language_prompt(sender):
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await sender.reply_text("Please select your preferred language: \nPor favor, selecione seu idioma preferido: \nPor favor, selecciona tu idioma preferido:", reply_markup=reply_markup)
+
+async def send_main_menu(sender, user):
+    keyboard = [
+        [
+            InlineKeyboardButton("📋 " + t("new_task", user.language), callback_data="menu_new_task"),
+            InlineKeyboardButton("📊 " + t("my_progress", user.language), callback_data="menu_progress")
+        ],
+        [
+            InlineKeyboardButton("🎯 " + t("my_goals", user.language), callback_data="menu_goals"),
+            InlineKeyboardButton("📁 " + t("my_projects", user.language), callback_data="menu_projects")
+        ],
+        [
+            InlineKeyboardButton("✅ " + t("my_tasks", user.language), callback_data="menu_tasks"),
+            InlineKeyboardButton("⚙️ " + t("settings", user.language), callback_data="menu_settings")
+        ]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await sender.reply_text(
+        t("welcome_back", user.language).format(nickname=user.nickname),
+        reply_markup=reply_markup
+    )
+
+async def send_goals_list(sender, goals, language="en-US"):
+    keyboard = []
+    for goal in sorted(goals, key=lambda goal: goal.name):
+        keyboard.append([InlineKeyboardButton(f"🎯 {goal.name}", callback_data=f"goal_projects_{goal.id}")])
+        keyboard.append([
+            InlineKeyboardButton("✏️ " + t("btn_edit", language), callback_data=f"edit_goal_{goal.id}"),
+            InlineKeyboardButton("🗑️ " + t("btn_delete", language), callback_data=f"delete_goal_{goal.id}"),
+            InlineKeyboardButton("📁 " + t("btn_projects", language), callback_data=f"goal_projects_{goal.id}")
+        ])
+    keyboard.append([InlineKeyboardButton(t("btn_new_goal", language), callback_data="new_goal")])
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await sender.reply_text(t("my_goals", language), reply_markup=reply_markup)
+
+async def send_confirmation_prompt(sender, action, language="en-US"):
+    keyboard = [
+        [
+            InlineKeyboardButton(t("btn_yes", language), callback_data=f"confirm_{action}"),
+            InlineKeyboardButton(t("btn_no", language), callback_data=f"cancel_{action}")
+        ]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await sender.reply_text(t("confirm_action", language).format(action=action), reply_markup=reply_markup)
+
+async def send_edit_goal_menu(sender, goal, language="en-US"):
+    keyboard = [
+        [
+            InlineKeyboardButton("📝 " + t("btn_name", language), callback_data=f"egoal_name_{goal.id}"),
+            InlineKeyboardButton("📄 " + t("btn_description", language), callback_data=f"egoal_desc_{goal.id}"),
+            InlineKeyboardButton("⭐ " + t("btn_importance", language), callback_data=f"egoal_importance_{goal.id}")
+        ],
+        [InlineKeyboardButton("❌ " + t("btn_cancel", language), callback_data="menu_goals")]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await sender.reply_text(f"✏️ {t('edit_goal', language)}: {goal.name}", reply_markup=reply_markup)

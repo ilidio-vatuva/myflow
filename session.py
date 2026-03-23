@@ -25,7 +25,19 @@ class SessionState(Enum):
     WAITING_FOR_GOAL_NAME = "waiting_for_goal_name"
     WAITING_FOR_GOAL_DESC = "waiting_for_goal_desc"
     WAITING_FOR_GOAL_IMPORTANCE = "waiting_for_goal_importance"
-
+    
+    # Management flows
+    EDITING_GOAL_NAME = "editing_goal_name"
+    EDITING_GOAL_DESC = "editing_goal_desc"
+    EDITING_GOAL_IMPORTANCE = "editing_goal_importance"
+    
+    EDITING_PROJECT_NAME = "editing_project_name"
+    EDITING_PROJECT_DESC = "editing_project_desc"
+    EDITING_PROJECT_HOURS = "editing_project_hours"
+    EDITING_PROJECT_FREQUENCY = "editing_project_frequency"
+    EDITING_PROJECT_DUE_DATE = "editing_project_due_date"
+    
+    EDITING_TASK_TITLE = "editing_task_title"
 
 def get_session(telegram_user_id):
     return user_sessions.get(telegram_user_id, {"state": SessionState.WAITING_FOR_TASK})

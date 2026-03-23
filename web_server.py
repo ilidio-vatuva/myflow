@@ -17,12 +17,18 @@ app = FastAPI()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # startup
-    webhook_url = os.getenv('WEBHOOK_URL')
     await telegram_app.initialize()
-    await telegram_app.bot.set_webhook(f"{webhook_url}/telegram/webhook")
+    if os.path.exists('.env'):
+        await telegram_app.start()
+        await telegram_app.updater.start_polling()
+    else:
+        webhook_url = os.getenv('WEBHOOK_URL')
+        await telegram_app.bot.set_webhook(f"{webhook_url}/telegram/webhook")
     yield
-    # shutdown
+    # Shutdown
+    if os.path.exists('.env'):
+        await telegram_app.updater.stop()
+        await telegram_app.stop()
     await telegram_app.shutdown()
 
 app = FastAPI(lifespan=lifespan)

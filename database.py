@@ -112,10 +112,7 @@ def insert_message(conn, cursor, user_id, role, message):
 
 # Updates
 def update_task_status(conn, cursor, task_id, status, spent_time=None):
-    cursor.execute('''
-        update tasks set status = ?, spent_time = ? where id = ?
-    ''', (status, spent_time, task_id))
-    conn.commit()
+    update_task(conn, cursor, task_id, status=status, spent_time=spent_time)
 
 def update_user(conn, cursor, user_id, nickname=None, telegram_id=None, google_token=None, language=None):
     fields = []
@@ -136,6 +133,78 @@ def update_user(conn, cursor, user_id, nickname=None, telegram_id=None, google_t
     values.append(user_id)
     cursor.execute(f'''
         update user set {', '.join(fields)} where id = ?
+    ''', values)
+    conn.commit()
+
+def update_goal(conn, cursor, goal_id, name=None, importance=None, description=None):
+    fields = []
+    values = []
+    if name:
+        fields.append("name = ?")
+        values.append(name)
+    if importance:
+        fields.append("importance = ?")
+        values.append(importance)
+    if description is not None:
+        fields.append("description = ?")
+        values.append(description)
+
+    values.append(goal_id)
+    cursor.execute(f'''
+        update goals set {', '.join(fields)} where id = ?
+    ''', values)
+    conn.commit()
+
+def update_project(conn, cursor, project_id, name=None, description=None, due_date=None, hours=None, frequency=None):
+    fields = []
+    values = []
+    if name:
+        fields.append("name = ?")
+        values.append(name)
+    if description is not None:
+        fields.append("description = ?")
+        values.append(description)
+    if due_date is not None:
+        fields.append("due_date = ?")
+        values.append(due_date)
+    if hours is not None:
+        fields.append("hours = ?")
+        values.append(hours)
+    if frequency is not None:
+        fields.append("frequency = ?")
+        values.append(frequency)
+
+    values.append(project_id)
+    cursor.execute(f'''
+        update projects set {', '.join(fields)} where id = ?
+    ''', values)
+    conn.commit()
+
+def update_task(conn, cursor, task_id, title=None, status=None, start_date=None, end_date=None, planned_duration=None, spent_time=None):
+    fields = []
+    values = []
+    if title:
+        fields.append("title = ?")
+        values.append(title)
+    if status:
+        fields.append("status = ?")
+        values.append(status)
+    if start_date is not None:
+        fields.append("start_date = ?")
+        values.append(start_date)
+    if end_date is not None:
+        fields.append("end_date = ?")
+        values.append(end_date)
+    if planned_duration is not None:
+        fields.append("planned_duration = ?")
+        values.append(planned_duration)
+    if spent_time is not None:
+        fields.append("spent_time = ?")
+        values.append(spent_time)
+
+    values.append(task_id)
+    cursor.execute(f'''
+        update tasks set {', '.join(fields)} where id = ?
     ''', values)
     conn.commit()
 
@@ -202,3 +271,16 @@ def get_goal_by_id(cursor, goal_id) -> Optional[Goal]:
     if row:
         return Goal(id=row[0], user_id=row[1], name=row[2], importance=row[3], description=row[4])
     return None
+
+# Delete
+def delete_goal(conn, cursor, goal_id):
+    cursor.execute('DELETE FROM goals WHERE id = ?', (goal_id,))
+    conn.commit()
+
+def delete_project(conn, cursor, project_id):
+    cursor.execute('DELETE FROM projects WHERE id = ?', (project_id,))
+    conn.commit()
+
+def delete_task(conn, cursor, task_id):
+    cursor.execute('DELETE FROM tasks WHERE id = ?', (task_id,))
+    conn.commit()
