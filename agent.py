@@ -10,6 +10,8 @@ if os.path.exists('.env'):
 def execute_task(metadata, events):
 
     system_prompt = os.getenv('SYSTEM_PROMPT')
+    print(f"SYSTEM_PROMPT available: {system_prompt is not None}")
+    print(f"SYSTEM_PROMPT length: {len(system_prompt) if system_prompt else 0}")
     if not system_prompt:
         with open("knowledge/system_prompt.md", "r") as f:
             system_prompt = f.read()
