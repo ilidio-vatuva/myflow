@@ -119,6 +119,7 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
         goal = get_goal_by_id(cursor, project.goal_id)
 
         metadata = {
+                    "user_nickname": user.nickname,
                     "current_date": datetime.datetime.now(datetime.timezone.utc).isoformat(),
                     "current_time_utc": datetime.datetime.now(datetime.timezone.utc).strftime("%H:%M UTC"),
                     "earliest_schedule_time": (datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(minutes=30)).isoformat(),
