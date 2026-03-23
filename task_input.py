@@ -29,7 +29,6 @@ def get_bot():
     return ApplicationBuilder().token(token).build()
 
 async def reply_telegram(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    print(f"Received message: {update.message.text} from user: {update.message.from_user.id}")
     conn , cursor = init_db()
     telegram_user_id = update.message.from_user.id
     
@@ -120,7 +119,7 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
         goal = get_goal_by_id(cursor, project.goal_id)
 
         metadata = {
-                    "current_date": datetime.datetime.now().isoformat(),
+                    "current_date": datetime.datetime.now(datetime.timezone.utc).isoformat(),
                     "goal_name": goal.name, "goal_description": goal.description, "goal_importance": goal.importance, 
                     "project_name": project.name, "project_description": project.description, "project_due_date": project.due_date, "project_hours": project.hours, "project_frequency": project.frequency,
                     "task": task, "deadline": deadline }

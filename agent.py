@@ -8,11 +8,7 @@ from dotenv import load_dotenv
 if os.path.exists('.env'):
     load_dotenv()
 
-def get_system_prompt():
-    system_prompt = os.getenv('SYSTEM_PROMPT')
-    if system_prompt:
-        return system_prompt
-    
+def get_system_prompt():    
     prompt_url = os.getenv('SYSTEM_PROMPT_URL')
     if prompt_url:
         response = requests.get(prompt_url)
