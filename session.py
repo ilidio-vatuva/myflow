@@ -36,7 +36,7 @@ class SessionState(Enum):
     EDITING_PROJECT_HOURS = "editing_project_hours"
     EDITING_PROJECT_FREQUENCY = "editing_project_frequency"
     EDITING_PROJECT_DUE_DATE = "editing_project_due_date"
-    
+    EDITING_PROJECT = "editing_project"
     EDITING_TASK_TITLE = "editing_task_title"
 
 def get_session(telegram_user_id):

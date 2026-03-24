@@ -272,6 +272,18 @@ def get_goal_by_id(cursor, goal_id) -> Optional[Goal]:
         return Goal(id=row[0], user_id=row[1], name=row[2], importance=row[3], description=row[4])
     return None
 
+def get_projects_by_user_id(cursor, user_id) -> list[Project]:
+    cursor.execute('''
+        select p.id, p.goal_id, p.name, p.description, p.due_date, p.hours, p.frequency 
+        from projects p
+        join goals g on p.goal_id = g.id
+        where g.user_id = ?
+    ''', (user_id,))
+    rows = cursor.fetchall()
+    if rows:
+        return [Project(id=row[0], goal_id=row[1], name=row[2], description=row[3], due_date=row[4], hours=row[5], frequency=row[6]) for row in rows]
+    return []
+
 # Delete
 def delete_goal(conn, cursor, goal_id):
     cursor.execute('DELETE FROM goals WHERE id = ?', (goal_id,))

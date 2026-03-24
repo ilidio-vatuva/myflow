@@ -72,12 +72,14 @@ async def send_project_daily_hours_prompt(sender, language="en-US"):
         [
             InlineKeyboardButton(_hours_label(1, language), callback_data="hours_1"),
             InlineKeyboardButton(_hours_label(2, language), callback_data="hours_2"),
-            InlineKeyboardButton(_hours_label(3, language), callback_data="hours_3"),
-            InlineKeyboardButton(_hours_label(4, language), callback_data="hours_4")
+            InlineKeyboardButton(_hours_label(3, language), callback_data="hours_3")
         ],
         [
+            InlineKeyboardButton(_hours_label(4, language), callback_data="hours_4"),
             InlineKeyboardButton(_hours_label(5, language), callback_data="hours_5"),
-            InlineKeyboardButton(_hours_label(6, language), callback_data="hours_6"),
+            InlineKeyboardButton(_hours_label(6, language), callback_data="hours_6")
+        ],
+        [
             InlineKeyboardButton(_hours_label(7, language), callback_data="hours_7"),
             InlineKeyboardButton(_hours_label(8, language), callback_data="hours_8")
         ]
@@ -90,10 +92,10 @@ async def send_project_weekly_hours_prompt(sender, language="en-US"):
         [
             InlineKeyboardButton(_hours_label(5, language), callback_data="hours_5"),
             InlineKeyboardButton(_hours_label(6, language), callback_data="hours_6"),
-            InlineKeyboardButton(_hours_label(7, language), callback_data="hours_7"),
-            InlineKeyboardButton(_hours_label(8, language), callback_data="hours_8"),
+            InlineKeyboardButton(_hours_label(7, language), callback_data="hours_7")
         ],
         [
+            InlineKeyboardButton(_hours_label(8, language), callback_data="hours_8"),
             InlineKeyboardButton(_hours_label(10, language), callback_data="hours_10"),
             InlineKeyboardButton(_hours_label(20, language), callback_data="hours_20"),
             InlineKeyboardButton(_hours_label(40, language), callback_data="hours_40")
@@ -107,10 +109,10 @@ async def send_project_monthly_hours_prompt(sender, language="en-US"):
         [
             InlineKeyboardButton(_hours_label(20, language), callback_data="hours_20"),
             InlineKeyboardButton(_hours_label(40, language), callback_data="hours_40"),
-            InlineKeyboardButton(_hours_label(60, language), callback_data="hours_60"),
-            InlineKeyboardButton(_hours_label(80, language), callback_data="hours_80")
+            InlineKeyboardButton(_hours_label(60, language), callback_data="hours_60")
         ],
         [
+            InlineKeyboardButton(_hours_label(80, language), callback_data="hours_80"),
             InlineKeyboardButton(_hours_label(100, language), callback_data="hours_100"),
             InlineKeyboardButton(_hours_label(150, language), callback_data="hours_150"),
             InlineKeyboardButton(_hours_label(200, language), callback_data="hours_200")
@@ -119,12 +121,54 @@ async def send_project_monthly_hours_prompt(sender, language="en-US"):
     reply_markup = InlineKeyboardMarkup(keyboard)
     await sender.reply_text(t("project_time_spent", language), reply_markup=reply_markup)
 
+async def send_edit_project_hours_prompt(sender, language="en-US"):
+    keyboard = [
+        [
+            InlineKeyboardButton(_hours_label(1, language), callback_data="edit_hours_1"),
+            InlineKeyboardButton(_hours_label(2, language), callback_data="edit_hours_2"),
+            InlineKeyboardButton(_hours_label(3, language), callback_data="edit_hours_3")
+        ],
+        [
+            InlineKeyboardButton(_hours_label(4, language), callback_data="edit_hours_4"),
+            InlineKeyboardButton(_hours_label(5, language), callback_data="edit_hours_5"),
+            InlineKeyboardButton(_hours_label(6, language), callback_data="edit_hours_6")
+        ],
+        [
+            InlineKeyboardButton(_hours_label(7, language), callback_data="edit_hours_7"),
+            InlineKeyboardButton(_hours_label(8, language), callback_data="edit_hours_8"),
+            InlineKeyboardButton(_hours_label(10, language), callback_data="edit_hours_10")
+        ],
+        [
+            InlineKeyboardButton(_hours_label(20, language), callback_data="edit_hours_20"),
+            InlineKeyboardButton(_hours_label(40, language), callback_data="edit_hours_40"),
+            InlineKeyboardButton(_hours_label(60, language), callback_data="edit_hours_60")
+        ],
+        [
+            InlineKeyboardButton(_hours_label(80, language), callback_data="edit_hours_80"),
+            InlineKeyboardButton(_hours_label(100, language), callback_data="edit_hours_100"),
+            InlineKeyboardButton(_hours_label(150, language), callback_data="edit_hours_150"),
+            InlineKeyboardButton(_hours_label(200, language), callback_data="edit_hours_200")
+        ]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await sender.reply_text(t("project_time_spent", language), reply_markup=reply_markup)
 async def send_project_frequency_prompt(sender, language="en-US"):
     keyboard = [
         [
             InlineKeyboardButton(t("btn_daily", language), callback_data="frequency_daily"),
             InlineKeyboardButton(t("btn_weekly", language), callback_data="frequency_weekly"),
             InlineKeyboardButton(t("btn_monthly", language), callback_data="frequency_monthly")
+        ]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await sender.reply_text(t("project_frequency", language), reply_markup=reply_markup)
+
+async def send_edit_project_frequency_prompt(sender, language="en-US"):
+    keyboard = [
+        [
+            InlineKeyboardButton(t("btn_daily", language), callback_data="edit_frequency_daily"),
+            InlineKeyboardButton(t("btn_weekly", language), callback_data="edit_frequency_weekly"),
+            InlineKeyboardButton(t("btn_monthly", language), callback_data="edit_frequency_monthly")
         ]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -140,6 +184,21 @@ async def send_due_date_prompt(sender, language="en-US"):
     [
         InlineKeyboardButton(t("btn_1_year", language), callback_data="due_date_1year"),
         InlineKeyboardButton(t("btn_no_due_date", language), callback_data="due_date_none")
+    ]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await sender.reply_text(t("pick_due_date", language), reply_markup=reply_markup)
+
+async def send_edit_due_date_prompt(sender, language="en-US"):
+    keyboard = [
+    [
+        InlineKeyboardButton(t("btn_1_month", language), callback_data="edit_due_date_1month"),
+        InlineKeyboardButton(t("btn_3_months", language), callback_data="edit_due_date_3months"),
+        InlineKeyboardButton(t("btn_6_months", language), callback_data="edit_due_date_6months"),
+    ],
+    [
+        InlineKeyboardButton(t("btn_1_year", language), callback_data="edit_due_date_1year"),
+        InlineKeyboardButton(t("btn_no_due_date", language), callback_data="edit_due_date_none")
     ]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -189,6 +248,35 @@ async def send_goals_list(sender, goals, language="en-US"):
     keyboard.append([InlineKeyboardButton(t("btn_new_goal", language), callback_data="new_goal")])
     reply_markup = InlineKeyboardMarkup(keyboard)
     await sender.reply_text(t("my_goals", language), reply_markup=reply_markup)
+
+async def send_projects_list(sender, projects, language="en-US"):
+    keyboard = []
+    for project in sorted(projects, key=lambda project: project.name):
+        keyboard.append([InlineKeyboardButton(f"📁 {project.name}", callback_data=f"project_tasks_{project.id}")])
+        keyboard.append([
+            InlineKeyboardButton("✏️ " + t("btn_edit", language), callback_data=f"edit_project_{project.id}"),
+            InlineKeyboardButton("🗑️ " + t("btn_delete", language), callback_data=f"delete_project_{project.id}"),
+            InlineKeyboardButton("✅ " + t("btn_tasks", language), callback_data=f"project_tasks_{project.id}")
+        ])
+    keyboard.append([InlineKeyboardButton(t("btn_new_project", language), callback_data="new_project")])
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await sender.reply_text(t("my_projects", language), reply_markup=reply_markup)
+
+async def send_edit_project_menu(sender, project, language="en-US"):
+    keyboard = [
+        [
+            InlineKeyboardButton("📝 " + t("btn_name", language), callback_data=f"eproject_name_{project.id}"),
+            InlineKeyboardButton("📄 " + t("btn_description", language), callback_data=f"eproject_desc_{project.id}"),
+            InlineKeyboardButton("⏰ " + t("btn_due_date", language), callback_data=f"eproject_due_date_{project.id}")
+        ],
+        [
+            InlineKeyboardButton("⏱️ " + t("btn_time_spent", language), callback_data=f"eproject_time_{project.id}"),
+            InlineKeyboardButton("🔁 " + t("btn_frequency", language), callback_data=f"eproject_frequency_{project.id}")
+        ],
+        [InlineKeyboardButton("❌ " + t("btn_cancel", language), callback_data="menu_projects")]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await sender.reply_text(f"✏️ {t('edit_project', language)}: {project.name}", reply_markup=reply_markup)
 
 async def send_confirmation_prompt(sender, action, language="en-US"):
     keyboard = [
