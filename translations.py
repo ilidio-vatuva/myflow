@@ -42,6 +42,14 @@ translations = {
         "edit_project_name": "What's the new name for this project? 📁",
         "edit_project_desc": "What's the new description for this project? 📁",
         "edit_project": "Edit Project",
+        "task_completed": "✅ Task marked as completed!",
+        "delete_task": "Are you sure you want to delete the task '{task_title}'? This action cannot be undone.",
+        "task_deleted": "✅ Task deleted successfully!",
+        "confirm_delete_task": "Are you sure you want to delete this task? This action cannot be undone.",
+        "confirm_delete_goal": "Are you sure you want to delete this goal?",
+        "confirm_delete_project": "Are you sure you want to delete this project?",
+        "project_created_success": "✅ Project created successfully!",
+        "no_goals_yet": "You don't have any goals yet! Create a goal first via 🎯 My Goals.",
         # buttons
         "btn_connect_calendar": "🔗 Connect Google Calendar",
         "btn_new_project": "➕ New Project",
@@ -76,7 +84,10 @@ translations = {
         "btn_tasks": "Tasks",
         "btn_due_date": "Due Date",
         "btn_time_spent": "Hours",
-        "btn_frequency": "Frequency"
+        "btn_frequency": "Frequency",
+        "btn_complete": "Complete",
+        "btn_reschedule": "Reschedule",
+        "btn_new_task": "➕ New Task",
     },
     "pt-PT": {
         "welcome_back": "Bem-vindo de volta, {nickname}! 👑\n\nO que gostarias de fazer?",
@@ -120,6 +131,14 @@ translations = {
         "edit_project_name": "Qual é o novo nome para este projeto? 📁",
         "edit_project_desc": "Qual é a nova descrição para este projeto? 📁",
         "edit_project": "Editar Projeto",
+        "task_completed": "✅ Tarefa marcada como concluída!",
+        "delete_task": "Tens a certeza que queres eliminar a tarefa '{task_title}'? Esta ação não pode ser desfeita.",
+        "task_deleted": "✅ Tarefa eliminada com sucesso!",
+        "confirm_delete_task": "Tens a certeza que queres eliminar esta tarefa? Esta ação não pode ser desfeita.",
+        "confirm_delete_goal": "Tens a certeza que queres eliminar este objetivo? Esta ação não pode ser desfeita.",
+        "confirm_delete_project": "Tens a certeza que queres eliminar este projeto? Esta ação não pode ser desfeita.",
+        "project_created_success": "✅ Projeto criado com sucesso!",
+        "no_goals_yet": "Ainda não tens nenhum objetivo! Cria um objetivo primeiro via 🎯 Os Meus Objetivos.",
         # buttons
         "btn_connect_calendar": "🔗 Ligar Google Calendar",
         "btn_new_project": "➕ Novo Projeto",
@@ -154,7 +173,10 @@ translations = {
         "btn_tasks": "Tarefas",
         "btn_due_date": "Data de Entrega",
         "btn_time_spent": "Horas",
-        "btn_frequency": "Frequência"
+        "btn_frequency": "Frequência",
+        "btn_complete": "Completar",
+        "btn_reschedule": "Reagendar",
+        "btn_new_task": "➕ Nova Tarefa",
     },
     "es-ES": {
         "welcome_back": "¡Bienvenido de nuevo, {nickname}! 👑\n\n¿Qué te gustaría hacer?",
@@ -198,6 +220,14 @@ translations = {
         "edit_project_name": "¿Cuál es el nuevo nombre para este proyecto? 📁",
         "edit_project_desc": "¿Cuál es la nueva descripción para este proyecto? 📁",
         "edit_project": "Editar Proyecto",
+        "task_completed": "✅ ¡Tarea marcada como completada!",
+        "delete_task": "¿Estás seguro de que quieres eliminar la tarea '{task_title}'? Esta acción no se puede deshacer.",
+        "task_deleted": "✅ ¡Tarea eliminada con éxito!",
+        "confirm_delete_task": "¿Estás seguro de que quieres eliminar esta tarea? Esta acción no se puede deshacer.",
+        "confirm_delete_goal": "¿Estás seguro de que quieres eliminar este objetivo?",
+        "confirm_delete_project": "¿Estás seguro de que quieres eliminar este proyecto?",
+        "project_created_success": "✅ ¡Proyecto creado con éxito!",
+        "no_goals_yet": "¡Aún no tienes ningún objetivo! Crea un objetivo primero a través de 🎯 Mis Objetivos.",
         # buttons
         "btn_connect_calendar": "🔗 Conectar Google Calendar",
         "btn_new_project": "➕ Nuevo Proyecto",
@@ -232,7 +262,10 @@ translations = {
         "btn_tasks": "Tareas",
         "btn_due_date": "Fecha de Entrega",
         "btn_time_spent": "Horas",
-        "btn_frequency": "Frecuencia"
+        "btn_frequency": "Frecuencia",
+        "btn_complete": "Completar",
+        "btn_reschedule": "Reprogramar",
+        "btn_new_task": "➕ Nueva Tarea",
     }
 }
 

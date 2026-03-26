@@ -2,12 +2,13 @@ import datetime
 import os
 
 from telegram import Update
+from calendar_manager import delete_event
 from main import process_task
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes, CallbackQueryHandler
 from dotenv import load_dotenv
-from database import delete_goal, delete_project, get_goal_by_id, get_project_by_id, get_projects_by_user_id, init_db, insert_goal, insert_project, insert_user, get_user_by_telegram_id, get_goals_by_user_id, get_projects_by_goal_id, insert_task, update_goal, update_project
+from database import delete_goal, delete_project, delete_task, get_goal_by_id, get_project_by_id, get_projects_by_user_id, get_task_by_id, get_tasks_by_project_id, init_db, insert_goal, insert_project, insert_user, get_user_by_telegram_id, get_goals_by_user_id, get_projects_by_goal_id, insert_task, update_goal, update_project, update_task, update_task_status
 from session import SessionState, get_session, clear_session, update_session
-from prompts import send_confirmation_prompt, send_due_date_prompt, send_edit_due_date_prompt, send_edit_goal_importance_prompt, send_edit_goal_menu, send_edit_project_frequency_prompt, send_edit_project_hours_prompt, send_edit_project_menu, send_goal_importance_prompt, send_goals_list, send_main_menu, send_oauth_prompt, send_preferred_language_prompt, send_project_daily_hours_prompt, send_project_frequency_prompt, send_project_monthly_hours_prompt, send_project_weekly_hours_prompt, send_projects_list, send_projects_prompt, send_goals_prompt, send_deadline_prompt
+from prompts import send_confirmation_prompt, send_due_date_prompt, send_edit_due_date_prompt, send_edit_goal_importance_prompt, send_edit_goal_menu, send_edit_project_frequency_prompt, send_edit_project_hours_prompt, send_edit_project_menu, send_goal_importance_prompt, send_goals_list, send_main_menu, send_oauth_prompt, send_preferred_language_prompt, send_project_daily_hours_prompt, send_project_frequency_prompt, send_project_monthly_hours_prompt, send_project_weekly_hours_prompt, send_projects_list, send_projects_prompt, send_goals_prompt, send_deadline_prompt, send_tasks_list
 from translations import t
 
 if os.path.exists('.env'):
@@ -137,6 +138,12 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if data == "new_project":
         goals = get_goals_by_user_id(cursor=cursor, user_id=user.id)
         await send_goals_prompt(query.message, goals, user.language)
+    
+    elif data.startswith("project_tasks_"):
+        project_id = int(data.split("_")[-1])
+        tasks = get_tasks_by_project_id(cursor, project_id, status="pending")
+        update_session(telegram_user_id, {"project_id": project_id})
+        await send_tasks_list(query.message, tasks, user.language)
 
     elif data.startswith("project_"):
         project_id = int(data.split("_")[1])
@@ -152,27 +159,34 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
         project = get_project_by_id(cursor, project_id)
         goal = get_goal_by_id(cursor, project.goal_id)
 
-        metadata = {
-                    "user_nickname": user.nickname,
-                    "current_date": datetime.datetime.now(datetime.timezone.utc).isoformat(),
-                    "current_time_utc": datetime.datetime.now(datetime.timezone.utc).strftime("%H:%M UTC"),
-                    "earliest_schedule_time": (datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(minutes=30)).isoformat(),
-                    "goal_name": goal.name, "goal_description": goal.description, "goal_importance": goal.importance, 
-                    "project_name": project.name, "project_description": project.description, "project_due_date": project.due_date, "project_hours": project.hours, "project_frequency": project.frequency,
-                    "task": task, "deadline": deadline }
-        await query.message.reply_text(t("scheduling_task", user.language))
-        result = process_task(user.google_token, metadata)
-        insert_task(
-            conn, cursor,
-            project_id=project_id,
-            title=result["calendar_event"]["title"],
-            status="pending",
-            start_date=result["calendar_event"]["suggested_start_time"],
-            end_date=result["calendar_event"]["suggested_end_time"],
-            planned_duration=result["calendar_event"]["duration"],
-        )
-        await query.message.reply_text(format_output_msg(result))
-        clear_session(telegram_user_id)
+        if task:
+            metadata = {
+                        "user_nickname": user.nickname,
+                        "current_date": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+                        "current_time_utc": datetime.datetime.now(datetime.timezone.utc).strftime("%H:%M UTC"),
+                        "earliest_schedule_time": (datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(minutes=30)).isoformat(),
+                        "goal_name": goal.name, "goal_description": goal.description, "goal_importance": goal.importance, 
+                        "project_name": project.name, "project_description": project.description, "project_due_date": project.due_date, "project_hours": project.hours, "project_frequency": project.frequency,
+                        "task": task, "deadline": deadline }
+            await query.message.reply_text(t("scheduling_task", user.language))
+            result = process_task(user.google_token, metadata)
+            insert_task(
+                conn, cursor,
+                project_id=project_id,
+                title=result["calendar_event"]["title"],
+                status="pending",
+                start_date=result["calendar_event"]["suggested_start_time"],
+                end_date=result["calendar_event"]["suggested_end_time"],
+                planned_duration=result["calendar_event"]["duration"],
+                calendar_event_id=result["calendar_event"].get("id")
+            )
+            await query.message.reply_text(format_output_msg(result))
+            clear_session(telegram_user_id)
+        else:
+            await query.message.reply_text(t("project_created_success", user.language))
+            clear_session(telegram_user_id)
+            projects = get_projects_by_user_id(cursor, user.id)
+            await send_projects_list(query.message, projects, user.language)
 
     elif data.startswith("frequency_"):
         frequency = data.split("_")[1]
@@ -202,14 +216,19 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
         goal_id = session.get("goal_id")
 
         project_id = insert_project(conn, cursor, goal_id, project_name, project_description, due_date, project_hours, project_frequency)
-        if not project_id:
-            await query.message.reply_text(t("project_creation_error", user.language))
+        task = session.get("task")
+        if task:
+            # came from task creation flow
+            update_session(telegram_user_id, {"project": project_id})
+            update_session(telegram_user_id, {"state": SessionState.WAITING_FOR_DEADLINE})
+            await send_deadline_prompt(query.message, user.language)
+        else:
+            # came from project management flow
+            await query.message.reply_text(t("project_created_success", user.language))
             clear_session(telegram_user_id)
-            return
-        update_session(telegram_user_id, {"project": project_id})
-        update_session(telegram_user_id, {"state": SessionState.WAITING_FOR_DEADLINE})
-        await send_deadline_prompt(query.message, user.language)
-
+            projects = get_projects_by_user_id(cursor, user.id)
+            await send_projects_list(query.message, projects, user.language)
+    
     elif data == "new_goal":
         update_session(telegram_user_id, {"state": SessionState.WAITING_FOR_GOAL_NAME})
         await query.message.reply_text(t("new_goal_name", user.language))
@@ -240,7 +259,12 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.message.reply_text(t("welcome", language))   
 
     elif data == "menu_new_task":    
+        goals = get_goals_by_user_id(cursor, user.id)
+        if not goals:
+            await query.message.reply_text(t("no_goals_yet", user.language))
+            return
         clear_session(telegram_user_id)
+        update_session(telegram_user_id, {"state": SessionState.WAITING_FOR_TASK})
         await query.message.reply_text(t("send_task", user.language))
 
     elif data == "menu_goals":        
@@ -344,7 +368,7 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     elif data.startswith("edit_due_date_"):
         project_id = session.get("project_id")
-        due_date = data.split("_")[2]
+        due_date = data.split("_")[-1]
         due_date = None if due_date == "none" else due_date
         update_project(conn, cursor, project_id, due_date=due_date)
         clear_session(telegram_user_id)
@@ -354,7 +378,7 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     elif data.startswith("edit_frequency_"):
         project_id = session.get("project_id")
-        frequency = data.split("_")[2]
+        frequency = data.split("_")[-1]
         update_project(conn, cursor, project_id, frequency=frequency)
         clear_session(telegram_user_id)
         await query.message.reply_text(t("project_updated", user.language))
@@ -363,12 +387,68 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     elif data.startswith("edit_hours_"):
         project_id = session.get("project_id")
-        hours = int(data.split("_")[2])
+        hours = int(data.split("_")[-1])
         update_project(conn, cursor, project_id, hours=hours)
         clear_session(telegram_user_id)
         await query.message.reply_text(t("project_updated", user.language))
         projects = get_projects_by_user_id(cursor, user.id)
         await send_projects_list(query.message, projects, user.language)
+
+    elif data.startswith("complete_task_"):
+        task_id = int(data.split("_")[-1])
+        update_task_status(conn, cursor, task_id, "completed")
+        await query.message.reply_text(t("task_completed", user.language))
+        project_id = session.get("project_id")
+        tasks = get_tasks_by_project_id(cursor, project_id, status="pending")
+        await send_tasks_list(query.message, tasks, user.language)
+
+    elif data.startswith("delete_task_"):
+        task_id = int(data.split("_")[-1])
+        update_session(telegram_user_id, {"task_id": task_id})
+        await send_confirmation_prompt(query.message, "delete_task", user.language)
+
+    elif data.startswith("confirm_delete_task"):
+        task_id = session.get("task_id")
+        task = get_task_by_id(cursor, task_id)
+        if task.calendar_event_id:
+            delete_event(user.google_token, task.calendar_event_id)
+        delete_task(conn, cursor, task_id)
+        await query.message.reply_text(t("task_deleted", user.language))
+        project_id = session.get("project_id")
+        tasks = get_tasks_by_project_id(cursor, project_id, status="pending")
+        await send_tasks_list(query.message, tasks, user.language)
+
+    elif data.startswith("reschedule_task_"):
+        task_id = int(data.split("_")[-1])
+        task = get_task_by_id(cursor, task_id)
+        project = get_project_by_id(cursor, task.project_id)
+        goal = get_goal_by_id(cursor, project.goal_id)
+        
+        metadata = {
+            "user_nickname": user.nickname,
+            "current_date": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+            "current_time_utc": datetime.datetime.now(datetime.timezone.utc).strftime("%H:%M UTC"),
+            "earliest_schedule_time": (datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(minutes=30)).isoformat(),
+            "goal_name": goal.name, "goal_description": goal.description, "goal_importance": goal.importance,
+            "project_name": project.name, "project_description": project.description, "project_due_date": project.due_date, "project_hours": project.hours, "project_frequency": project.frequency,
+            "task": task.title, "deadline": "reschedule"
+        }
+        await query.message.reply_text(t("scheduling_task", user.language))
+        result = process_task(user.google_token, metadata)
+        update_task(conn, cursor, task_id,
+            start_date=result["calendar_event"]["suggested_start_time"],
+            end_date=result["calendar_event"]["suggested_end_time"]
+        )
+        await query.message.reply_text(format_output_msg(result))
+    
+    elif data.startswith("new_task"):
+        project_id = session.get("project_id")
+        if not project_id:
+            await query.message.reply_text(t("processing_error", user.language))
+            return
+        clear_session(telegram_user_id)
+        update_session(telegram_user_id, {"project": project_id, "state": SessionState.WAITING_FOR_TASK})
+        await query.message.reply_text(t("send_task", user.language))
 
 async def error_handler(update, context):
     print(f"Error: {context.error}")

@@ -262,6 +262,19 @@ async def send_projects_list(sender, projects, language="en-US"):
     reply_markup = InlineKeyboardMarkup(keyboard)
     await sender.reply_text(t("my_projects", language), reply_markup=reply_markup)
 
+async def send_tasks_list(sender, tasks, language="en-US"):
+    keyboard = []
+    for task in sorted(tasks, key=lambda task: task.title):
+        keyboard.append([InlineKeyboardButton(f"✅ {task.title} - {task.status}", callback_data=f"task_{task.id}")])
+        keyboard.append([
+            InlineKeyboardButton("☑️ " + t("btn_complete", language), callback_data=f"complete_task_{task.id}"),
+            InlineKeyboardButton("🔄 " + t("btn_reschedule", language), callback_data=f"reschedule_task_{task.id}"),
+            InlineKeyboardButton("🗑️ " + t("btn_delete", language), callback_data=f"delete_task_{task.id}")
+        ])
+    keyboard.append([InlineKeyboardButton(t("btn_new_task", language), callback_data="new_task")])
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await sender.reply_text(t("my_tasks", language), reply_markup=reply_markup)
+
 async def send_edit_project_menu(sender, project, language="en-US"):
     keyboard = [
         [
@@ -286,7 +299,7 @@ async def send_confirmation_prompt(sender, action, language="en-US"):
         ]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
-    await sender.reply_text(t("confirm_action", language).format(action=action), reply_markup=reply_markup)
+    await sender.reply_text(t(f"confirm_{action}", language), reply_markup=reply_markup)
 
 async def send_edit_goal_menu(sender, goal, language="en-US"):
     keyboard = [

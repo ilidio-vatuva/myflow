@@ -37,6 +37,7 @@ class Task:
     end_date: Optional[str] = None
     planned_duration: Optional[int] = None
     spent_time: Optional[int] = None
+    calendar_event_id: Optional[str] = None
 
 @dataclass
 class Conversation:

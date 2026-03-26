@@ -54,6 +54,15 @@ def create_event(token, title, description, start_time, end_time, transparent=Fa
   except HttpError as error:
       print(f"An error occurred: {error}")
 
+def delete_event(token, event_id):
+    try:
+        service = get_service(token)
+        service.events().delete(calendarId='primary', eventId=event_id).execute()
+        return True
+    except HttpError as error:
+        print(f"An error occurred: {error}")
+        return False
+    
 def get_service(token):
     creds = Credentials.from_authorized_user_info(json.loads(token))
     return build("calendar", "v3", credentials=creds)

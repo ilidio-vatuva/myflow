@@ -55,7 +55,8 @@ def create_tables(conn, cursor):
             start_date date,
             end_date date,
             planned_duration integer,
-            spent_time integer
+            spent_time integer,
+            calendar_event_id text
         )
     ''')
     cursor.execute('''
@@ -94,11 +95,11 @@ def insert_project(conn, cursor, goal_id, name, description=None, due_date=None,
     conn.commit()
     return cursor.lastrowid
 
-def insert_task(conn, cursor, project_id, title, status, start_date=None, end_date=None, planned_duration=None, spent_time=None):
+def insert_task(conn, cursor, project_id, title, status, start_date=None, end_date=None, planned_duration=None, spent_time=None, calendar_event_id=None):
     cursor.execute('''
-        insert into tasks (project_id, title, status, start_date, end_date, planned_duration, spent_time)
-        values (?, ?, ?, ?, ?, ?, ?)
-    ''', (project_id, title, status, start_date, end_date, planned_duration, spent_time))
+        insert into tasks (project_id, title, status, start_date, end_date, planned_duration, spent_time, calendar_event_id)
+        values (?, ?, ?, ?, ?, ?, ?, ?)
+    ''', (project_id, title, status, start_date, end_date, planned_duration, spent_time, calendar_event_id))
     conn.commit()
     return cursor.lastrowid
 
@@ -180,7 +181,7 @@ def update_project(conn, cursor, project_id, name=None, description=None, due_da
     ''', values)
     conn.commit()
 
-def update_task(conn, cursor, task_id, title=None, status=None, start_date=None, end_date=None, planned_duration=None, spent_time=None):
+def update_task(conn, cursor, task_id, title=None, status=None, start_date=None, end_date=None, planned_duration=None, spent_time=None, calendar_event_id=None):
     fields = []
     values = []
     if title:
@@ -201,6 +202,9 @@ def update_task(conn, cursor, task_id, title=None, status=None, start_date=None,
     if spent_time is not None:
         fields.append("spent_time = ?")
         values.append(spent_time)
+    if calendar_event_id is not None:
+        fields.append("calendar_event_id = ?")
+        values.append(calendar_event_id)
 
     values.append(task_id)
     cursor.execute(f'''
@@ -236,13 +240,18 @@ def get_projects_by_goal_id(cursor, goal_id) -> list[Project]:
         return [Project(id=row[0], goal_id=goal_id, name=row[1], description=row[2], due_date=row[3], hours=row[4], frequency=row[5]) for row in rows]
     return []
 
-def get_tasks_by_project_id(cursor, project_id) -> list[Task]:
-    cursor.execute('''
-        select id, title, status, start_date, end_date, planned_duration, spent_time from tasks where project_id = ?
-    ''', (project_id,))
+def get_tasks_by_project_id(cursor, project_id, status=None) -> list[Task]:
+    if status:
+        cursor.execute('''
+            select id, title, status, start_date, end_date, planned_duration, spent_time, calendar_event_id from tasks where project_id = ? and status like ?
+        ''', (project_id, f'%{status}%'))
+    else:
+        cursor.execute('''
+            select id, title, status, start_date, end_date, planned_duration, spent_time, calendar_event_id from tasks where project_id = ?
+        ''', (project_id,))
     rows = cursor.fetchall()
     if rows:
-        return [Task(id=row[0], project_id=project_id, title=row[1], status=row[2], start_date=row[3], end_date=row[4], planned_duration=row[5], spent_time=row[6]) for row in rows]
+        return [Task(id=row[0], project_id=project_id, title=row[1], status=row[2], start_date=row[3], end_date=row[4], planned_duration=row[5], spent_time=row[6], calendar_event_id=row[7]) for row in rows]
     return []
 
 def get_conversations_by_user_id(cursor, user_id) -> list[Conversation]:
@@ -283,6 +292,15 @@ def get_projects_by_user_id(cursor, user_id) -> list[Project]:
     if rows:
         return [Project(id=row[0], goal_id=row[1], name=row[2], description=row[3], due_date=row[4], hours=row[5], frequency=row[6]) for row in rows]
     return []
+
+def get_task_by_id(cursor, task_id) -> Optional[Task]:
+    cursor.execute('''
+        select id, project_id, title, status, start_date, end_date, planned_duration, spent_time, calendar_event_id from tasks where id = ?
+    ''', (task_id,))
+    row = cursor.fetchone()
+    if row:
+        return Task(id=row[0], project_id=row[1], title=row[2], status=row[3], start_date=row[4], end_date=row[5], planned_duration=row[6], spent_time=row[7], calendar_event_id=row[8])
+    return None
 
 # Delete
 def delete_goal(conn, cursor, goal_id):
