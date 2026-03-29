@@ -18,6 +18,7 @@ async def send_projects_prompt(sender, projects, language="en-US"):
         inline_keyboard = [InlineKeyboardButton(f"📋 {project.name}", callback_data=f"project_{project.id}")]
         keyboard.append(inline_keyboard)
     keyboard.append([InlineKeyboardButton(t("btn_new_project", language), callback_data="new_project")])
+    keyboard.append([InlineKeyboardButton("❌ " + t("btn_cancel", language), callback_data="main_menu")])
     reply_markup = InlineKeyboardMarkup(keyboard)
     await sender.reply_text(t("pick_project", language), reply_markup=reply_markup)
 
@@ -27,6 +28,7 @@ async def send_goals_prompt(sender, goals, language="en-US"):
         inline_keyboard = [InlineKeyboardButton(f"🎯 {goal.name}", callback_data=f"goalId_{goal.id}")]
         keyboard.append(inline_keyboard)
     keyboard.append([InlineKeyboardButton(t("btn_new_goal", language), callback_data="new_goal")])
+    keyboard.append([InlineKeyboardButton("❌ " + t("btn_cancel", language), callback_data="main_menu")])
     reply_markup = InlineKeyboardMarkup(keyboard)
     await sender.reply_text(t("pick_goal", language), reply_markup=reply_markup)
 
@@ -152,6 +154,7 @@ async def send_edit_project_hours_prompt(sender, language="en-US"):
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await sender.reply_text(t("project_time_spent", language), reply_markup=reply_markup)
+
 async def send_project_frequency_prompt(sender, language="en-US"):
     keyboard = [
         [
@@ -215,6 +218,17 @@ async def send_preferred_language_prompt(sender):
     reply_markup = InlineKeyboardMarkup(keyboard)
     await sender.reply_text("Please select your preferred language: \nPor favor, selecione seu idioma preferido: \nPor favor, selecciona tu idioma preferido:", reply_markup=reply_markup)
 
+async def send_edit_preferred_language_prompt(sender):
+    keyboard = [
+        [
+            InlineKeyboardButton("🇺🇸 English", callback_data="edit_language_en-US"),
+            InlineKeyboardButton("🇵🇹 Português", callback_data="edit_language_pt-PT"),
+            InlineKeyboardButton("🇪🇸 Español", callback_data="edit_language_es-ES")
+        ]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await sender.reply_text("Please select your preferred language: \nPor favor, selecione seu idioma preferido: \nPor favor, selecciona tu idioma preferido:", reply_markup=reply_markup)
+
 async def send_main_menu(sender, user):
     keyboard = [
         [
@@ -246,6 +260,7 @@ async def send_goals_list(sender, goals, language="en-US"):
             InlineKeyboardButton("📁 " + t("btn_projects", language), callback_data=f"goal_projects_{goal.id}")
         ])
     keyboard.append([InlineKeyboardButton(t("btn_new_goal", language), callback_data="new_goal")])
+    keyboard.append([InlineKeyboardButton("❌ " + t("btn_cancel", language), callback_data="main_menu")])
     reply_markup = InlineKeyboardMarkup(keyboard)
     await sender.reply_text(t("my_goals", language), reply_markup=reply_markup)
 
@@ -259,6 +274,7 @@ async def send_projects_list(sender, projects, language="en-US"):
             InlineKeyboardButton("✅ " + t("btn_tasks", language), callback_data=f"project_tasks_{project.id}")
         ])
     keyboard.append([InlineKeyboardButton(t("btn_new_project", language), callback_data="new_project")])
+    keyboard.append([InlineKeyboardButton("❌ " + t("btn_cancel", language), callback_data="main_menu")])
     reply_markup = InlineKeyboardMarkup(keyboard)
     await sender.reply_text(t("my_projects", language), reply_markup=reply_markup)
 
@@ -272,6 +288,7 @@ async def send_tasks_list(sender, tasks, language="en-US"):
             InlineKeyboardButton("🗑️ " + t("btn_delete", language), callback_data=f"delete_task_{task.id}")
         ])
     keyboard.append([InlineKeyboardButton(t("btn_new_task", language), callback_data="new_task")])
+    keyboard.append([InlineKeyboardButton("❌ " + t("btn_cancel", language), callback_data="main_menu")])
     reply_markup = InlineKeyboardMarkup(keyboard)
     await sender.reply_text(t("my_tasks", language), reply_markup=reply_markup)
 
@@ -312,3 +329,14 @@ async def send_edit_goal_menu(sender, goal, language="en-US"):
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await sender.reply_text(f"✏️ {t('edit_goal', language)}: {goal.name}", reply_markup=reply_markup)
+
+async def send_settings_menu(sender, user):
+    keyboard = [
+        [
+            InlineKeyboardButton("👤 " + t("btn_edit_nickname", user.language), callback_data="settings_nickname"),
+            InlineKeyboardButton("🌍 " + t("btn_edit_language", user.language), callback_data="settings_language")
+        ],
+        [InlineKeyboardButton("❌ " + t("btn_cancel", user.language), callback_data="main_menu")]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await sender.reply_text(t("settings", user.language), reply_markup=reply_markup)

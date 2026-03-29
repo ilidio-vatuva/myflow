@@ -6,9 +6,9 @@ from calendar_manager import delete_event
 from main import process_task
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes, CallbackQueryHandler
 from dotenv import load_dotenv
-from database import delete_goal, delete_project, delete_task, get_goal_by_id, get_project_by_id, get_projects_by_user_id, get_task_by_id, get_tasks_by_project_id, init_db, insert_goal, insert_project, insert_user, get_user_by_telegram_id, get_goals_by_user_id, get_projects_by_goal_id, insert_task, update_goal, update_project, update_task, update_task_status
+from database import delete_goal, delete_project, delete_task, get_goal_by_id, get_project_by_id, get_projects_by_user_id, get_task_by_id, get_tasks_by_project_id, init_db, insert_goal, insert_project, insert_user, get_user_by_telegram_id, get_goals_by_user_id, get_projects_by_goal_id, insert_task, update_goal, update_project, update_task, update_task_status, update_user
 from session import SessionState, get_session, clear_session, update_session
-from prompts import send_confirmation_prompt, send_due_date_prompt, send_edit_due_date_prompt, send_edit_goal_importance_prompt, send_edit_goal_menu, send_edit_project_frequency_prompt, send_edit_project_hours_prompt, send_edit_project_menu, send_goal_importance_prompt, send_goals_list, send_main_menu, send_oauth_prompt, send_preferred_language_prompt, send_project_daily_hours_prompt, send_project_frequency_prompt, send_project_monthly_hours_prompt, send_project_weekly_hours_prompt, send_projects_list, send_projects_prompt, send_goals_prompt, send_deadline_prompt, send_tasks_list
+from prompts import send_confirmation_prompt, send_due_date_prompt, send_edit_due_date_prompt, send_edit_goal_importance_prompt, send_edit_goal_menu, send_edit_preferred_language_prompt, send_edit_project_frequency_prompt, send_edit_project_hours_prompt, send_edit_project_menu, send_goal_importance_prompt, send_goals_list, send_main_menu, send_oauth_prompt, send_preferred_language_prompt, send_project_daily_hours_prompt, send_project_frequency_prompt, send_project_monthly_hours_prompt, send_project_weekly_hours_prompt, send_projects_list, send_projects_prompt, send_goals_prompt, send_deadline_prompt, send_tasks_list, send_settings_menu
 from translations import t
 
 if os.path.exists('.env'):
@@ -111,7 +111,6 @@ async def reply_telegram(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 projects = get_projects_by_user_id(cursor, user.id)
                 await send_projects_list(update.message, projects, user.language)
 
-
             elif session["state"] == SessionState.EDITING_PROJECT_DESC:
                 project_id = session.get("project_id")
                 update_project(conn, cursor, project_id, description=update.message.text)
@@ -119,6 +118,15 @@ async def reply_telegram(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await update.message.reply_text(t("project_updated", user.language))
                 projects = get_projects_by_user_id(cursor, user.id)
                 await send_projects_list(update.message, projects, user.language)
+
+            elif session["state"] == SessionState.EDITING_NICKNAME:
+                new_nickname = update.message.text
+                update_user(conn, cursor, user.id, nickname=new_nickname)
+                clear_session(telegram_user_id)
+                user = get_user_by_telegram_id(cursor, user.telegram_id)
+                await update.message.reply_text(t("nickname_updated", user.language).format(nickname=new_nickname))
+                await send_main_menu(update.message, user)
+
             else:
                 await update.message.reply_text(t("processing_error", user.language))
                 clear_session(telegram_user_id)
@@ -257,6 +265,14 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
         update_session(telegram_user_id, {"preferred_language": language})
         update_session(telegram_user_id, {"state": SessionState.WAITING_FOR_NICKNAME})
         await query.message.reply_text(t("welcome", language))   
+
+    elif data.startswith("edit_language_"):
+        language = data.split("_")[-1]
+        update_user(conn, cursor, user.id, language=language)
+        clear_session(telegram_user_id)
+        user = get_user_by_telegram_id(cursor, user.telegram_id) 
+        await query.message.reply_text(t("language_updated", language).format(language=t(f"language_name_{language}", language)))
+        await send_main_menu(query.message, user)
 
     elif data == "menu_new_task":    
         goals = get_goals_by_user_id(cursor, user.id)
@@ -449,6 +465,19 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
         clear_session(telegram_user_id)
         update_session(telegram_user_id, {"project": project_id, "state": SessionState.WAITING_FOR_TASK})
         await query.message.reply_text(t("send_task", user.language))
+    
+    elif data == "menu_settings":
+        await send_settings_menu(query.message, user)
+
+    elif data.startswith("settings_nickname"):
+        update_session(telegram_user_id, {"state": SessionState.EDITING_NICKNAME})
+        await query.message.reply_text(t("enter_new_nickname", user.language))
+
+    elif data.startswith("settings_language"):
+        await send_edit_preferred_language_prompt(query.message)
+
+    elif data == "main_menu":
+        await send_main_menu(query.message, user)
 
 async def error_handler(update, context):
     print(f"Error: {context.error}")

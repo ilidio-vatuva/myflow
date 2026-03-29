@@ -38,6 +38,8 @@ class SessionState(Enum):
     EDITING_PROJECT_DUE_DATE = "editing_project_due_date"
     EDITING_PROJECT = "editing_project"
     EDITING_TASK_TITLE = "editing_task_title"
+    EDITING_NICKNAME = "editing_nickname"
+    EDITING_PREFERRED_LANGUAGE = "editing_preferred_language"
 
 def get_session(telegram_user_id):
     return user_sessions.get(telegram_user_id, {"state": SessionState.WAITING_FOR_TASK})

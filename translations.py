@@ -50,6 +50,12 @@ translations = {
         "confirm_delete_project": "Are you sure you want to delete this project?",
         "project_created_success": "✅ Project created successfully!",
         "no_goals_yet": "You don't have any goals yet! Create a goal first via 🎯 My Goals.",
+        "nickname_updated": "✅ Nickname updated successfully to {nickname}!",
+        "language_updated": "✅ Language updated successfully to {language}!",
+        "enter_new_nickname": "What would you like to be called? 👤",
+        "language_name_en-US": "English",
+        "language_name_pt-PT": "Portuguese",
+        "language_name_es-ES": "Spanish",
         # buttons
         "btn_connect_calendar": "🔗 Connect Google Calendar",
         "btn_new_project": "➕ New Project",
@@ -88,6 +94,8 @@ translations = {
         "btn_complete": "Complete",
         "btn_reschedule": "Reschedule",
         "btn_new_task": "➕ New Task",
+        "btn_edit_nickname": "Nickname",
+        "btn_edit_language": "Language"
     },
     "pt-PT": {
         "welcome_back": "Bem-vindo de volta, {nickname}! 👑\n\nO que gostarias de fazer?",
@@ -139,6 +147,12 @@ translations = {
         "confirm_delete_project": "Tens a certeza que queres eliminar este projeto? Esta ação não pode ser desfeita.",
         "project_created_success": "✅ Projeto criado com sucesso!",
         "no_goals_yet": "Ainda não tens nenhum objetivo! Cria um objetivo primeiro via 🎯 Os Meus Objetivos.",
+        "nickname_updated": "✅ Apelido atualizado com sucesso para {nickname}!",
+        "language_updated": "✅ Idioma atualizado com sucesso para {language}!",
+        "enter_new_nickname": "Como gostarias de ser chamado? 👤",
+        "language_name_en-US": "Inglês",
+        "language_name_pt-PT": "Português",
+        "language_name_es-ES": "Espanhol",
         # buttons
         "btn_connect_calendar": "🔗 Ligar Google Calendar",
         "btn_new_project": "➕ Novo Projeto",
@@ -177,6 +191,8 @@ translations = {
         "btn_complete": "Completar",
         "btn_reschedule": "Reagendar",
         "btn_new_task": "➕ Nova Tarefa",
+        "btn_edit_nickname": "Apelido",
+        "btn_edit_language": "Idioma"
     },
     "es-ES": {
         "welcome_back": "¡Bienvenido de nuevo, {nickname}! 👑\n\n¿Qué te gustaría hacer?",
@@ -228,6 +244,12 @@ translations = {
         "confirm_delete_project": "¿Estás seguro de que quieres eliminar este proyecto?",
         "project_created_success": "✅ ¡Proyecto creado con éxito!",
         "no_goals_yet": "¡Aún no tienes ningún objetivo! Crea un objetivo primero a través de 🎯 Mis Objetivos.",
+        "nickname_updated": "✅ ¡Apodo actualizado con éxito a {nickname}!",
+        "language_updated": "✅ ¡Idioma actualizado con éxito a {language}!",
+        "enter_new_nickname": "¿Cómo te gustaría que te llamáramos? 👤",
+        "language_name_en-US": "Inglés",
+        "language_name_pt-PT": "Portugués",
+        "language_name_es-ES": "Español",
         # buttons
         "btn_connect_calendar": "🔗 Conectar Google Calendar",
         "btn_new_project": "➕ Nuevo Proyecto",
@@ -266,6 +288,8 @@ translations = {
         "btn_complete": "Completar",
         "btn_reschedule": "Reprogramar",
         "btn_new_task": "➕ Nueva Tarea",
+        "btn_edit_nickname": "Apodo",
+        "btn_edit_language": "Idioma"
     }
 }
 
