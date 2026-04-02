@@ -18,7 +18,13 @@ def generate_oauth_url(telegram_user_id):
 
 def get_oauth_flow():
     webhook_url = os.getenv('WEBHOOK_URL')
-    credentials = json.loads(os.getenv('GOOGLE_WEB_CREDENTIALS'))
+    credentials_json = os.getenv('GOOGLE_WEB_CREDENTIALS')
+    if credentials_json:
+        credentials = json.loads(credentials_json)
+    else:
+        with open('web_credentials.json', 'r') as f:
+            credentials = json.load(f)
+
     return Flow.from_client_config(
         credentials,
         scopes=['https://www.googleapis.com/auth/calendar.events'],

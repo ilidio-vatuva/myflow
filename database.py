@@ -211,6 +211,10 @@ def update_task(conn, cursor, task_id, title=None, status=None, start_date=None,
         update tasks set {', '.join(fields)} where id = ?
     ''', values)
     conn.commit()
+    
+def clear_google_token(conn, cursor, user_id):
+    cursor.execute('UPDATE user SET google_token = NULL WHERE id = ?', (user_id,))
+    conn.commit()
 
 # Queries
 def get_user_by_telegram_id(cursor, telegram_id) -> Optional[User]:
@@ -252,6 +256,32 @@ def get_tasks_by_project_id(cursor, project_id, status=None) -> list[Task]:
     rows = cursor.fetchall()
     if rows:
         return [Task(id=row[0], project_id=project_id, title=row[1], status=row[2], start_date=row[3], end_date=row[4], planned_duration=row[5], spent_time=row[6], calendar_event_id=row[7]) for row in rows]
+    return []
+
+def get_tasks_by_user_id(cursor, user_id, status=None) -> list[Task]:
+    if status:
+        cursor.execute('''
+            select t.id, t.project_id, t.title, t.status, t.start_date, t.end_date, 
+                   t.planned_duration, t.spent_time, t.calendar_event_id
+            from tasks t
+            join projects p on t.project_id = p.id
+            join goals g on p.goal_id = g.id
+            where g.user_id = ? and t.status like ?
+        ''', (user_id, f'%{status}%'))
+    else:
+        cursor.execute('''
+            select t.id, t.project_id, t.title, t.status, t.start_date, t.end_date,
+                   t.planned_duration, t.spent_time, t.calendar_event_id
+            from tasks t
+            join projects p on t.project_id = p.id
+            join goals g on p.goal_id = g.id
+            where g.user_id = ?
+        ''', (user_id,))
+    rows = cursor.fetchall()
+    if rows:
+        return [Task(id=row[0], project_id=row[1], title=row[2], status=row[3],
+                    start_date=row[4], end_date=row[5], planned_duration=row[6],
+                    spent_time=row[7], calendar_event_id=row[8]) for row in rows]
     return []
 
 def get_conversations_by_user_id(cursor, user_id) -> list[Conversation]:

@@ -37,22 +37,30 @@ def get_events(token):
 
     except HttpError as error:
         print(f"An error occurred: {error}")
+    except Exception as error:
+        if "invalid_grant" in str(error):
+            raise TokenExpiredError()
+        raise
 
 
 def create_event(token, title, description, start_time, end_time, transparent=False):
-  event = {
-    "summary": title,
-    "description": description,
-    "start": {"dateTime": start_time, "timeZone": "Europe/Madrid"},
-    "end": {"dateTime": end_time, "timeZone": "Europe/Madrid"},
-    "transparency": "transparent" if transparent else "opaque"
-  }
-  try:
+    event = {
+      "summary": title,
+      "description": description,
+      "start": {"dateTime": start_time, "timeZone": "Europe/Madrid"},
+      "end": {"dateTime": end_time, "timeZone": "Europe/Madrid"},
+      "transparency": "transparent" if transparent else "opaque"
+    }
+    try:
       service = get_service(token)
       event = service.events().insert(calendarId='primary', body=event).execute()
       return event
-  except HttpError as error:
-      print(f"An error occurred: {error}")
+    except HttpError as error:
+        print(f"An error occurred: {error}")
+    except Exception as error:
+        if "invalid_grant" in str(error):
+            raise TokenExpiredError()
+        raise
 
 def delete_event(token, event_id):
     try:
@@ -61,9 +69,15 @@ def delete_event(token, event_id):
         return True
     except HttpError as error:
         print(f"An error occurred: {error}")
-        return False
+    except Exception as error:
+        if "invalid_grant" in str(error):
+            raise TokenExpiredError()
+        raise
     
 def get_service(token):
     creds = Credentials.from_authorized_user_info(json.loads(token))
     return build("calendar", "v3", credentials=creds)
 
+
+class TokenExpiredError(Exception):
+    pass

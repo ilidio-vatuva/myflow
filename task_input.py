@@ -2,11 +2,11 @@ import datetime
 import os
 
 from telegram import Update
-from calendar_manager import delete_event
+from calendar_manager import TokenExpiredError, delete_event
 from main import process_task
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes, CallbackQueryHandler
 from dotenv import load_dotenv
-from database import delete_goal, delete_project, delete_task, get_goal_by_id, get_project_by_id, get_projects_by_user_id, get_task_by_id, get_tasks_by_project_id, init_db, insert_goal, insert_project, insert_user, get_user_by_telegram_id, get_goals_by_user_id, get_projects_by_goal_id, insert_task, update_goal, update_project, update_task, update_task_status, update_user
+from database import clear_google_token, delete_goal, delete_project, delete_task, get_goal_by_id, get_project_by_id, get_projects_by_user_id, get_task_by_id, get_tasks_by_project_id, get_tasks_by_user_id, init_db, insert_goal, insert_project, insert_user, get_user_by_telegram_id, get_goals_by_user_id, get_projects_by_goal_id, insert_task, update_goal, update_project, update_task, update_task_status, update_user
 from session import SessionState, get_session, clear_session, update_session
 from prompts import send_confirmation_prompt, send_due_date_prompt, send_edit_due_date_prompt, send_edit_goal_importance_prompt, send_edit_goal_menu, send_edit_preferred_language_prompt, send_edit_project_frequency_prompt, send_edit_project_hours_prompt, send_edit_project_menu, send_goal_importance_prompt, send_goals_list, send_main_menu, send_oauth_prompt, send_preferred_language_prompt, send_project_daily_hours_prompt, send_project_frequency_prompt, send_project_monthly_hours_prompt, send_project_weekly_hours_prompt, send_projects_list, send_projects_prompt, send_goals_prompt, send_deadline_prompt, send_tasks_list, send_settings_menu
 from translations import t
@@ -140,6 +140,9 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     telegram_user_id = update.effective_user.id
     user = get_user_by_telegram_id(cursor=cursor, telegram_id=telegram_user_id)
+    if user and not user.google_token:
+        await send_oauth_prompt(query.message, user.telegram_id, t("oauth_reconnect", user.language))
+        return
     session = get_session(telegram_user_id)
     data = query.data
 
@@ -177,7 +180,12 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         "project_name": project.name, "project_description": project.description, "project_due_date": project.due_date, "project_hours": project.hours, "project_frequency": project.frequency,
                         "task": task, "deadline": deadline }
             await query.message.reply_text(t("scheduling_task", user.language))
-            result = process_task(user.google_token, metadata)
+            try:
+                result = process_task(user.google_token, metadata)
+            except TokenExpiredError:
+                clear_google_token(conn, cursor, user.id)
+                await send_oauth_prompt(query.message, user.telegram_id, t("oauth_reconnect", user.language))
+                return
             insert_task(
                 conn, cursor,
                 project_id=project_id,
@@ -415,7 +423,10 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
         update_task_status(conn, cursor, task_id, "completed")
         await query.message.reply_text(t("task_completed", user.language))
         project_id = session.get("project_id")
-        tasks = get_tasks_by_project_id(cursor, project_id, status="pending")
+        if project_id:
+            tasks = get_tasks_by_project_id(cursor, project_id, status="pending")
+        else:
+            tasks = get_tasks_by_user_id(cursor, user.id, status="pending")
         await send_tasks_list(query.message, tasks, user.language)
 
     elif data.startswith("delete_task_"):
@@ -431,7 +442,10 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
         delete_task(conn, cursor, task_id)
         await query.message.reply_text(t("task_deleted", user.language))
         project_id = session.get("project_id")
-        tasks = get_tasks_by_project_id(cursor, project_id, status="pending")
+        if project_id:
+            tasks = get_tasks_by_project_id(cursor, project_id, status="pending")
+        else:
+            tasks = get_tasks_by_user_id(cursor, user.id, status="pending")
         await send_tasks_list(query.message, tasks, user.language)
 
     elif data.startswith("reschedule_task_"):
@@ -450,12 +464,23 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "task": task.title, "deadline": "reschedule"
         }
         await query.message.reply_text(t("scheduling_task", user.language))
-        result = process_task(user.google_token, metadata)
+        try:
+            result = process_task(user.google_token, metadata)
+        except TokenExpiredError:
+            clear_google_token(conn, cursor, user.id)
+            await send_oauth_prompt(query.message, user.telegram_id, t("oauth_reconnect", user.language))
+            return
         update_task(conn, cursor, task_id,
             start_date=result["calendar_event"]["suggested_start_time"],
             end_date=result["calendar_event"]["suggested_end_time"]
         )
         await query.message.reply_text(format_output_msg(result))
+        project_id = session.get("project_id")
+        if project_id:
+            tasks = get_tasks_by_project_id(cursor, project_id, status="pending")
+        else:
+            tasks = get_tasks_by_user_id(cursor, user.id, status="pending")
+        await send_tasks_list(query.message, tasks, user.language)
     
     elif data.startswith("new_task"):
         project_id = session.get("project_id")
@@ -479,6 +504,10 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif data == "main_menu":
         await send_main_menu(query.message, user)
 
+    elif data == "menu_tasks":
+        tasks = get_tasks_by_user_id(cursor, user.id, status="pending")
+        await send_tasks_list(query.message, tasks, user.language)
+    
 async def error_handler(update, context):
     print(f"Error: {context.error}")
     import traceback
