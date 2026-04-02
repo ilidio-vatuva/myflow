@@ -1,6 +1,13 @@
 from oauth import generate_oauth_url
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, ReplyKeyboardMarkup
 from translations import t
+
+
+MAIN_MENU_KEYBOARD = ReplyKeyboardMarkup(
+    [[KeyboardButton("📋 Menu")]],
+    resize_keyboard=True,
+    is_persistent=True
+)
 
 def _hours_label(n, language):
     unit = t("btn_hour", language) if n == 1 else t("btn_hours", language)
@@ -31,6 +38,27 @@ async def send_goals_prompt(sender, goals, language="en-US"):
     keyboard.append([InlineKeyboardButton("❌ " + t("btn_cancel", language), callback_data="main_menu")])
     reply_markup = InlineKeyboardMarkup(keyboard)
     await sender.reply_text(t("pick_goal", language), reply_markup=reply_markup)
+
+async def send_planning_projects_list(sender, projects, language="en-US"):
+    keyboard = []
+    for project in projects:
+        keyboard.append([InlineKeyboardButton(
+            f"📌 {project.name}", 
+            callback_data=f"plan_project_{project.id}"
+        )])
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await sender.reply_text(t("planning_pick_project", language), reply_markup=reply_markup)
+
+async def send_project_planning_menu(sender, project, language="en-US"):
+    keyboard = [
+        [
+            InlineKeyboardButton("🤖 " + t("btn_suggest_task", language), callback_data=f"plan_suggest_{project.id}"),
+            InlineKeyboardButton("✏️ " + t("btn_create_myself", language), callback_data=f"plan_create_{project.id}"),
+            InlineKeyboardButton("⏭️ " + t("btn_skip", language), callback_data=f"plan_skip_{project.id}")
+        ]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await sender.reply_text(f"📌 {project.name}", reply_markup=reply_markup)
 
 async def send_goal_importance_prompt(sender, language="en-US"):
     keyboard = [
@@ -249,6 +277,7 @@ async def send_main_menu(sender, user):
         t("welcome_back", user.language).format(nickname=user.nickname),
         reply_markup=reply_markup
     )
+    await sender.reply_text("👇", reply_markup=MAIN_MENU_KEYBOARD)
 
 async def send_goals_list(sender, goals, language="en-US"):
     keyboard = []
@@ -263,6 +292,7 @@ async def send_goals_list(sender, goals, language="en-US"):
     keyboard.append([InlineKeyboardButton("❌ " + t("btn_cancel", language), callback_data="main_menu")])
     reply_markup = InlineKeyboardMarkup(keyboard)
     await sender.reply_text(t("my_goals", language), reply_markup=reply_markup)
+    await sender.reply_text("👇", reply_markup=MAIN_MENU_KEYBOARD)
 
 async def send_projects_list(sender, projects, language="en-US"):
     keyboard = []
@@ -277,6 +307,7 @@ async def send_projects_list(sender, projects, language="en-US"):
     keyboard.append([InlineKeyboardButton("❌ " + t("btn_cancel", language), callback_data="main_menu")])
     reply_markup = InlineKeyboardMarkup(keyboard)
     await sender.reply_text(t("my_projects", language), reply_markup=reply_markup)
+    await sender.reply_text("👇", reply_markup=MAIN_MENU_KEYBOARD)
 
 async def send_tasks_list(sender, tasks, language="en-US"):
     keyboard = []
@@ -291,6 +322,7 @@ async def send_tasks_list(sender, tasks, language="en-US"):
     keyboard.append([InlineKeyboardButton("❌ " + t("btn_cancel", language), callback_data="main_menu")])
     reply_markup = InlineKeyboardMarkup(keyboard)
     await sender.reply_text(t("my_tasks", language), reply_markup=reply_markup)
+    await sender.reply_text("👇", reply_markup=MAIN_MENU_KEYBOARD)
 
 async def send_edit_project_menu(sender, project, language="en-US"):
     keyboard = [
@@ -340,3 +372,4 @@ async def send_settings_menu(sender, user):
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await sender.reply_text(t("settings", user.language), reply_markup=reply_markup)
+    await sender.reply_text("👇", reply_markup=MAIN_MENU_KEYBOARD)

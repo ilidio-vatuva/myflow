@@ -1,6 +1,7 @@
 import datetime
 import os
 
+from oauthlib.uri_validate import query
 from telegram import Update
 from calendar_manager import TokenExpiredError, delete_event
 from main import process_task
@@ -8,7 +9,7 @@ from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, fil
 from dotenv import load_dotenv
 from database import clear_google_token, delete_goal, delete_project, delete_task, get_goal_by_id, get_project_by_id, get_projects_by_user_id, get_task_by_id, get_tasks_by_project_id, get_tasks_by_user_id, init_db, insert_goal, insert_project, insert_user, get_user_by_telegram_id, get_goals_by_user_id, get_projects_by_goal_id, insert_task, update_goal, update_project, update_task, update_task_status, update_user
 from session import SessionState, get_session, clear_session, update_session
-from prompts import send_confirmation_prompt, send_due_date_prompt, send_edit_due_date_prompt, send_edit_goal_importance_prompt, send_edit_goal_menu, send_edit_preferred_language_prompt, send_edit_project_frequency_prompt, send_edit_project_hours_prompt, send_edit_project_menu, send_goal_importance_prompt, send_goals_list, send_main_menu, send_oauth_prompt, send_preferred_language_prompt, send_project_daily_hours_prompt, send_project_frequency_prompt, send_project_monthly_hours_prompt, send_project_weekly_hours_prompt, send_projects_list, send_projects_prompt, send_goals_prompt, send_deadline_prompt, send_tasks_list, send_settings_menu
+from prompts import MAIN_MENU_KEYBOARD, send_confirmation_prompt, send_due_date_prompt, send_edit_due_date_prompt, send_edit_goal_importance_prompt, send_edit_goal_menu, send_edit_preferred_language_prompt, send_edit_project_frequency_prompt, send_edit_project_hours_prompt, send_edit_project_menu, send_goal_importance_prompt, send_goals_list, send_main_menu, send_oauth_prompt, send_preferred_language_prompt, send_project_daily_hours_prompt, send_project_frequency_prompt, send_project_monthly_hours_prompt, send_project_planning_menu, send_project_weekly_hours_prompt, send_projects_list, send_projects_prompt, send_goals_prompt, send_deadline_prompt, send_tasks_list, send_settings_menu
 from translations import t
 
 if os.path.exists('.env'):
@@ -55,6 +56,9 @@ async def reply_telegram(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await send_oauth_prompt(update.message, update.message.from_user.id, t("oauth_reconnect", user.language))
             return
         else:
+            if update.message.text == "📋 Menu":
+                await send_main_menu(update.message, user)
+                return
             session = get_session(telegram_user_id)
             if session["state"] == SessionState.WAITING_FOR_TASK:
                 clear_session(telegram_user_id)
@@ -196,8 +200,9 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 planned_duration=result["calendar_event"]["duration"],
                 calendar_event_id=result["calendar_event"].get("id")
             )
-            await query.message.reply_text(format_output_msg(result))
             clear_session(telegram_user_id)
+            await query.message.reply_text(format_output_msg(result))
+            await query.message.reply_text("👇", reply_markup=MAIN_MENU_KEYBOARD)
         else:
             await query.message.reply_text(t("project_created_success", user.language))
             clear_session(telegram_user_id)
@@ -324,6 +329,7 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
         goal_id = session.get("goal_id")
         delete_goal(conn, cursor, goal_id)
         await query.message.reply_text(t("goal_deleted", user.language))
+        await query.message.reply_text("👇", reply_markup=MAIN_MENU_KEYBOARD) 
 
     elif data.startswith("egoal_name_"):
         goal_id = int(data.split("_")[-1])
@@ -364,6 +370,7 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
         project_id = session.get("project_id")
         delete_project(conn, cursor, project_id)
         await query.message.reply_text(t("project_deleted", user.language))
+        await query.message.reply_text("👇", reply_markup=MAIN_MENU_KEYBOARD)
 
     elif data.startswith("eproject_name_"):
         project_id = int(data.split("_")[-1])
@@ -475,6 +482,7 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
             end_date=result["calendar_event"]["suggested_end_time"]
         )
         await query.message.reply_text(format_output_msg(result))
+        await query.message.reply_text("👇", reply_markup=MAIN_MENU_KEYBOARD)
         project_id = session.get("project_id")
         if project_id:
             tasks = get_tasks_by_project_id(cursor, project_id, status="pending")
@@ -507,7 +515,50 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif data == "menu_tasks":
         tasks = get_tasks_by_user_id(cursor, user.id, status="pending")
         await send_tasks_list(query.message, tasks, user.language)
+
+    elif data.startswith("plan_project_"):
+        project_id = int(data.split("_")[-1])
+        project = get_project_by_id(cursor, project_id)
+        await send_project_planning_menu(query.message, project, user.language)
     
+    elif data.startswith("plan_suggest_"):
+        project_id = int(data.split("_")[-1])
+        project = get_project_by_id(cursor, project_id)
+        goal = get_goal_by_id(cursor, project.goal_id)
+        metadata = {
+            "user_nickname": user.nickname,
+            "current_date": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+            "current_time_utc": datetime.datetime.now(datetime.timezone.utc).strftime("%H:%M UTC"),
+            "earliest_schedule_time": (datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(minutes=30)).isoformat(),
+            "goal_name": goal.name, "goal_description": goal.description, "goal_importance": goal.importance,
+            "project_name": project.name, "project_description": project.description, 
+            "project_due_date": project.due_date, "project_hours": project.hours, 
+            "project_frequency": project.frequency,
+            "task": "suggest a relevant next task for this project",
+            "deadline": "this_week"
+        }
+        await query.message.reply_text(t("scheduling_task", user.language))
+        result = process_task(user.google_token, metadata)
+        insert_task(conn, cursor,
+            project_id=project_id,
+            title=result["calendar_event"]["title"],
+            status="pending",
+            start_date=result["calendar_event"]["suggested_start_time"],
+            end_date=result["calendar_event"]["suggested_end_time"],
+            planned_duration=result["calendar_event"]["duration"],
+            calendar_event_id=result["calendar_event"].get("id")
+        )
+        await query.message.reply_text(format_output_msg(result))
+
+    elif data.startswith("plan_create_"):
+        project_id = int(data.split("_")[-1])
+        update_session(telegram_user_id, {"project": project_id, "state": SessionState.WAITING_FOR_TASK})
+        await query.message.reply_text(t("send_task", user.language))
+
+    elif data.startswith("plan_skip_"):
+        await query.message.reply_text(t("planning_skipped", user.language))
+        await query.message.reply_text("👇", reply_markup=MAIN_MENU_KEYBOARD)
+
 async def error_handler(update, context):
     print(f"Error: {context.error}")
     import traceback

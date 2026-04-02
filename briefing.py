@@ -4,7 +4,7 @@ from database import get_all_users, init_db, get_tasks_by_user_id, get_projects_
 from calendar_manager import get_today_events
 from translations import t
 from task_input import get_bot
-from prompts import send_projects_list
+from prompts import send_planning_projects_list, send_projects_list
 from models import User
 
 madrid_tz = pytz.timezone('Europe/Madrid')
@@ -78,10 +78,7 @@ async def send_weekly_planning():
                 message += f"\n\n{t('planning_no_idle', lang)}"
             await bot.bot.send_message(chat_id=user.telegram_id, text=message)
             if idle_projects:
-                await send_projects_list(
-                    await bot.bot.send_message(chat_id=user.telegram_id, text="👇"),
-                    idle_projects,
-                    lang
-                )
+                fake_message = await bot.bot.send_message(chat_id=user.telegram_id, text=message)
+                await send_planning_projects_list(fake_message, idle_projects, lang)
         except Exception as e:
             print(f"Error sending weekly planning to {user.nickname}: {e}")
