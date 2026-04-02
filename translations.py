@@ -82,6 +82,8 @@ translations = {
         "pending": "Pending",
         "this_week": "This week",
         "tasks_completed": "Tasks completed",
+        "open_dashboard": "Open Dashboard",
+        "dashboard_ready": "📊 Your dashboard is ready! Link expires in 24h.",
         # buttons
         "btn_connect_calendar": "🔗 Connect Google Calendar",
         "btn_new_project": "➕ New Project",
@@ -204,6 +206,8 @@ translations = {
         "pending": "Pendente",
         "this_week": "Esta semana",
         "tasks_completed": "Tarefas concluídas",
+        "open_dashboard": "Abrir Dashboard",
+        "dashboard_ready": "📊 O seu dashboard está pronto! A ligação expira em 24h.",
         # buttons
         "btn_connect_calendar": "🔗 Ligar Google Calendar",
         "btn_new_project": "➕ Novo Projeto",
@@ -326,6 +330,8 @@ translations = {
         "pending": "Pendiente",
         "this_week": "Esta semana",
         "tasks_completed": "Tareas concluídas",
+        "open_dashboard": "Abrir Dashboard",
+        "dashboard_ready": "📊 Tu dashboard está listo! El enlace expira en 24h.",
         # buttons
         "btn_connect_calendar": "🔗 Conectar Google Calendar",
         "btn_new_project": "➕ Nuevo Proyecto",

@@ -71,6 +71,13 @@ def create_tables(conn, cursor):
             created_at datetime default current_timestamp
         )
     ''')
+    cursor.execute('''
+        create table if not exists dashboard_tokens (
+            user_id integer primary key references user(id) on delete cascade,
+            token text not null unique,
+            expires_at datetime not null
+        )
+    ''')
     conn.commit()
 
 # Inserts
@@ -113,6 +120,14 @@ def insert_message(conn, cursor, user_id, role, message):
     ''', (user_id, role, message))
     conn.commit()
     return cursor.lastrowid
+
+def create_dashboard_token(conn, cursor, user_id, token):
+    expiry = (datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=24)).isoformat()
+    cursor.execute('''
+        INSERT OR REPLACE INTO dashboard_tokens (user_id, token, expires_at)
+        VALUES (?, ?, ?)
+    ''', (user_id, token, expiry))
+    conn.commit()
 
 # Updates
 def complete_project(conn, cursor, project_id):
@@ -412,6 +427,18 @@ def get_progress_stats(cursor, user_id) -> dict:
         "completed_tasks": completed_tasks,
         "weekly_completed": weekly_completed
     }
+
+def get_user_by_dashboard_token(cursor, token):
+    cursor.execute('''
+        SELECT u.id, u.nickname, u.telegram_id, u.google_token, u.language
+        FROM dashboard_tokens dt
+        JOIN user u ON dt.user_id = u.id
+        WHERE dt.token = ? AND dt.expires_at > ?
+    ''', (token, datetime.datetime.now(datetime.timezone.utc).isoformat()))
+    row = cursor.fetchone()
+    if row:
+        return User(id=row[0], nickname=row[1], telegram_id=row[2], google_token=row[3], language=row[4])
+    return None
 
 # Delete
 def delete_goal(conn, cursor, goal_id):

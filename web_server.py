@@ -2,7 +2,9 @@ import os
 
 from fastapi import FastAPI, Request
 from dotenv import load_dotenv
-from database import update_user, get_user_by_telegram_id, init_db, get_user_by_telegram_id
+from fastapi.responses import HTMLResponse
+from fastapi.templating import Jinja2Templates
+from database import get_goals_by_user_id, get_progress_stats, get_projects_by_goal_id, get_tasks_by_project_id, get_tasks_by_user_id, get_user_by_dashboard_token, update_user, get_user_by_telegram_id, init_db, get_user_by_telegram_id
 from oauth import fetch_token
 from task_input import get_bot
 from telegram import Update
@@ -18,6 +20,7 @@ from briefing import send_daily_briefing, send_weekly_planning
 load_dotenv()
 
 scheduler = AsyncIOScheduler(timezone=pytz.timezone('Europe/Madrid'))
+templates = Jinja2Templates(directory="templates")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -74,3 +77,38 @@ async def test_daily_briefing():
 async def test_weekly_planning():
     await send_weekly_planning()
     return {"message": "Weekly planning sent!"}
+
+@app.get("/dashboard", response_class=HTMLResponse)
+async def dashboard(request: Request, token: str):
+    conn, cursor = init_db()
+    user = get_user_by_dashboard_token(cursor, token)
+    if not user:
+        return HTMLResponse("<h1>Link expired or invalid.</h1>", status_code=401)
+    
+    stats = get_progress_stats(cursor, user.id)
+    goals = get_goals_by_user_id(cursor, user.id)
+    pending_tasks = get_tasks_by_user_id(cursor, user.id, status="pending")
+    
+    # Build goals with projects
+    goals_with_projects = []
+    for goal in goals:
+        projects = get_projects_by_goal_id(cursor, goal.id)
+        projects_with_tasks = []
+        for project in projects:
+            tasks = get_tasks_by_project_id(cursor, project.id, status="pending")
+            projects_with_tasks.append({"project": project, "task_count": len(tasks)})
+        goals_with_projects.append({"goal": goal, "projects": projects_with_tasks})
+
+    return templates.TemplateResponse("dashboard.html", {
+        "request": request,
+        "user": user,
+        "stats": stats,
+        "goals_with_projects": goals_with_projects,
+        "pending_tasks": pending_tasks[:10],
+        "total_tasks": stats['pending_tasks'] + stats['completed_tasks'],
+        "total_projects": stats['active_projects'] + stats['completed_projects'],
+        "total_goals": stats['active_goals'] + stats['completed_goals'],
+        "task_pct": round((stats['completed_tasks'] / (stats['pending_tasks'] + stats['completed_tasks']) * 100) if (stats['pending_tasks'] + stats['completed_tasks']) > 0 else 0),
+        "project_pct": round((stats['completed_projects'] / (stats['active_projects'] + stats['completed_projects']) * 100) if (stats['active_projects'] + stats['completed_projects']) > 0 else 0),
+        "goal_pct": round((stats['completed_goals'] / (stats['active_goals'] + stats['completed_goals']) * 100) if (stats['active_goals'] + stats['completed_goals']) > 0 else 0),
+    })

@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>myflow — {{ user.nickname }}</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,300&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+    <style>
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --bg: #080b12;
+            --surface: rgba(255,255,255,0.04);
+            --border: rgba(255,255,255,0.08);
+            --text: #e2e8f0;
+            --muted: #64748b;
+            --accent: #6366f1;
+            --green: #10b981;
+            --blue: #3b82f6;
+            --purple: #8b5cf6;
+        }
+
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            background-image:
+                radial-gradient(ellipse at 15% 10%, rgba(99,102,241,0.12) 0%, transparent 55%),
+                radial-gradient(ellipse at 85% 85%, rgba(16,185,129,0.08) 0%, transparent 55%);
+        }
+
+        .mono { font-family: 'DM Mono', monospace; }
+
+        .container {
+            max-width: 480px;
+            margin: 0 auto;
+            padding: 28px 16px 48px;
+        }
+
+        /* Header */
+        .header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            margin-bottom: 32px;
+        }
+
+        .header-brand {
+            font-size: 11px;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: var(--accent);
+            font-weight: 500;
+            margin-bottom: 6px;
+        }
+
+        .header-name {
+            font-size: 26px;
+            font-weight: 600;
+            line-height: 1.1;
+        }
+
+        .header-stat {
+            text-align: right;
+        }
+
+        .header-stat-label {
+            font-size: 10px;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            margin-bottom: 2px;
+        }
+
+        .header-stat-value {
+            font-size: 32px;
+            font-weight: 500;
+            color: var(--green);
+            line-height: 1;
+        }
+
+        /* Card */
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            padding: 20px;
+            margin-bottom: 14px;
+            backdrop-filter: blur(8px);
+        }
+
+        .card-title {
+            font-size: 10px;
+            font-weight: 600;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: var(--muted);
+            margin-bottom: 16px;
+        }
+
+        /* Donut */
+        .donut-wrap {
+            position: relative;
+            width: 150px;
+            height: 150px;
+            margin: 0 auto 20px;
+        }
+
+        .donut-center {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            pointer-events: none;
+        }
+
+        .donut-pct {
+            font-size: 26px;
+            font-weight: 500;
+            line-height: 1;
+        }
+
+        .donut-sub {
+            font-size: 10px;
+            color: var(--muted);
+            margin-top: 3px;
+        }
+
+        .donut-legend {
+            display: flex;
+            justify-content: center;
+            gap: 24px;
+        }
+
+        .legend-item { text-align: center; }
+
+        .legend-dot {
+            width: 7px; height: 7px;
+            border-radius: 50%;
+            margin: 0 auto 5px;
+        }
+
+        .legend-val {
+            font-size: 16px;
+            font-weight: 500;
+            line-height: 1;
+        }
+
+        .legend-lbl {
+            font-size: 10px;
+            color: var(--muted);
+            margin-top: 2px;
+        }
+
+        /* Progress bars */
+        .stat-row {
+            margin-bottom: 18px;
+        }
+
+        .stat-row:last-child { margin-bottom: 0; }
+
+        .stat-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 7px;
+        }
+
+        .stat-label { font-size: 14px; }
+
+        .stat-count {
+            font-size: 11px;
+            color: var(--muted);
+        }
+
+        .bar-track {
+            height: 5px;
+            background: rgba(255,255,255,0.07);
+            border-radius: 99px;
+            overflow: hidden;
+        }
+
+        .bar-fill {
+            height: 100%;
+            border-radius: 99px;
+            transition: width 1.2s cubic-bezier(.4,0,.2,1);
+        }
+
+        /* Goal blocks */
+        .goal-block {
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 14px;
+            margin-bottom: 10px;
+            background: rgba(255,255,255,0.02);
+        }
+
+        .goal-block:last-child { margin-bottom: 0; }
+
+        .goal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+
+        .goal-name {
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .badge {
+            font-size: 10px;
+            padding: 3px 8px;
+            border-radius: 99px;
+            font-weight: 500;
+        }
+
+        .badge-active { background: rgba(99,102,241,0.18); color: #818cf8; }
+        .badge-completed { background: rgba(16,185,129,0.15); color: #34d399; }
+
+        /* Project rows */
+        .project-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 10px;
+            border-radius: 8px;
+            background: rgba(255,255,255,0.03);
+            margin-bottom: 6px;
+        }
+
+        .project-row:last-child { margin-bottom: 0; }
+
+        .project-name { font-size: 13px; color: #cbd5e1; }
+
+        .project-meta {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .project-tasks {
+            font-size: 10px;
+            color: var(--muted);
+        }
+
+        /* Task rows */
+        .task-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 9px 10px;
+            border-radius: 8px;
+            background: rgba(255,255,255,0.03);
+            margin-bottom: 6px;
+        }
+
+        .task-row:last-child { margin-bottom: 0; }
+
+        .task-dot {
+            width: 6px; height: 6px;
+            border-radius: 50%;
+            background: #f59e0b;
+            flex-shrink: 0;
+        }
+
+        .task-title { font-size: 13px; color: #cbd5e1; }
+
+        .empty-state {
+            font-size: 13px;
+            color: var(--muted);
+            text-align: center;
+            padding: 12px 0;
+        }
+
+        .footer {
+            text-align: center;
+            font-size: 10px;
+            color: #1e293b;
+            margin-top: 12px;
+            letter-spacing: 0.05em;
+        }
+
+        /* Animations */
+        .card { animation: fadeUp 0.5s ease both; }
+        .card:nth-child(1) { animation-delay: 0s; }
+        .card:nth-child(2) { animation-delay: 0.07s; }
+        .card:nth-child(3) { animation-delay: 0.14s; }
+        .card:nth-child(4) { animation-delay: 0.21s; }
+        .card:nth-child(5) { animation-delay: 0.28s; }
+
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(16px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+
+    <!-- Header -->
+    <div class="header">
+        <div>
+            <p class="header-brand mono">myflow</p>
+            <h1 class="header-name">Hey, {{ user.nickname }} 👑</h1>
+        </div>
+        <div class="header-stat">
+            <p class="header-stat-label">this week</p>
+            <p class="header-stat-value mono">{{ stats.weekly_completed }}</p>
+            <p style="font-size:10px; color:var(--muted);">tasks done</p>
+        </div>
+    </div>
+
+    <!-- Donut chart -->
+    <div class="card">
+        <p class="card-title">Overall Progress</p>
+        <div class="donut-wrap">
+            <canvas id="donutChart"></canvas>
+            <div class="donut-center">
+                <p class="donut-pct mono">{{ task_pct }}%</p>
+                <p class="donut-sub">tasks done</p>
+            </div>
+        </div>
+        <div class="donut-legend">
+            <div class="legend-item">
+                <div class="legend-dot" style="background:var(--green);"></div>
+                <p class="legend-val mono">{{ stats.completed_tasks }}</p>
+                <p class="legend-lbl">Completed</p>
+            </div>
+            <div class="legend-item">
+                <div class="legend-dot" style="background:rgba(255,255,255,0.12);"></div>
+                <p class="legend-val mono">{{ stats.pending_tasks }}</p>
+                <p class="legend-lbl">Pending</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stats bars -->
+    <div class="card">
+        <p class="card-title">At a Glance</p>
+
+        <div class="stat-row">
+            <div class="stat-meta">
+                <span class="stat-label">🎯 Goals</span>
+                <span class="stat-count mono">{{ stats.completed_goals }} / {{ total_goals }}</span>
+            </div>
+            <div class="bar-track">
+                <div class="bar-fill" id="goalBar" style="width:0%; background: linear-gradient(90deg, var(--accent), var(--purple));"></div>
+            </div>
+        </div>
+
+        <div class="stat-row">
+            <div class="stat-meta">
+                <span class="stat-label">📁 Projects</span>
+                <span class="stat-count mono">{{ stats.completed_projects }} / {{ total_projects }}</span>
+            </div>
+            <div class="bar-track">
+                <div class="bar-fill" id="projectBar" style="width:0%; background: linear-gradient(90deg, var(--blue), var(--accent));"></div>
+            </div>
+        </div>
+
+        <div class="stat-row">
+            <div class="stat-meta">
+                <span class="stat-label">✅ Tasks</span>
+                <span class="stat-count mono">{{ stats.completed_tasks }} / {{ total_tasks }}</span>
+            </div>
+            <div class="bar-track">
+                <div class="bar-fill" id="taskBar" style="width:0%; background: linear-gradient(90deg, var(--green), var(--blue));"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Goals & Projects -->
+    <div class="card">
+        <p class="card-title">Goals & Projects</p>
+        {% if goals_with_projects %}
+            {% for item in goals_with_projects %}
+            <div class="goal-block">
+                <div class="goal-header">
+                    <span class="goal-name">
+                        {% if item.goal.status == 'completed' %}🏁{% else %}🎯{% endif %}
+                        {{ item.goal.name }}
+                    </span>
+                    <span class="badge {% if item.goal.status == 'completed' %}badge-completed{% else %}badge-active{% endif %}">
+                        {{ item.goal.status }}
+                    </span>
+                </div>
+                {% if item.projects %}
+                    {% for p in item.projects %}
+                    <div class="project-row">
+                        <span class="project-name">
+                            {% if p.project.status == 'completed' %}🏁{% else %}📁{% endif %}
+                            {{ p.project.name }}
+                        </span>
+                        <div class="project-meta">
+                            <span class="project-tasks">{{ p.task_count }} tasks</span>
+                            <span class="badge {% if p.project.status == 'completed' %}badge-completed{% else %}badge-active{% endif %}">
+                                {{ p.project.status }}
+                            </span>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <p class="empty-state">No projects yet</p>
+                {% endif %}
+            </div>
+            {% endfor %}
+        {% else %}
+            <p class="empty-state">No goals yet 🎯</p>
+        {% endif %}
+    </div>
+
+    <!-- Pending Tasks -->
+    <div class="card">
+        <p class="card-title">Pending Tasks</p>
+        {% if pending_tasks %}
+            {% for task in pending_tasks %}
+            <div class="task-row">
+                <div class="task-dot"></div>
+                <span class="task-title">{{ task.title }}</span>
+            </div>
+            {% endfor %}
+            {% if stats.pending_tasks > 10 %}
+            <p style="font-size:11px; color:var(--muted); margin-top:10px; text-align:center;">
+                + {{ stats.pending_tasks - 10 }} more
+            </p>
+            {% endif %}
+        {% else %}
+            <p class="empty-state">No pending tasks! 🎉</p>
+        {% endif %}
+    </div>
+
+    <p class="footer mono">myflow · link expires in 24h</p>
+</div>
+
+<script>
+    // Donut chart
+    new Chart(document.getElementById('donutChart').getContext('2d'), {
+        type: 'doughnut',
+        data: {
+            datasets: [{
+                data: [{{ stats.completed_tasks }}, {{ stats.pending_tasks }}],
+                backgroundColor: ['#10b981', 'rgba(255,255,255,0.06)'],
+                borderWidth: 0,
+                borderRadius: 6,
+            }]
+        },
+        options: {
+            cutout: '78%',
+            plugins: { legend: { display: false }, tooltip: { enabled: false } },
+            animation: { duration: 1200, easing: 'easeInOutQuart' }
+        }
+    });
+
+    // Animate progress bars
+    setTimeout(() => {
+        document.getElementById('goalBar').style.width = '{{ goal_pct }}%';
+        document.getElementById('projectBar').style.width = '{{ project_pct }}%';
+        document.getElementById('taskBar').style.width = '{{ task_pct }}%';
+    }, 300);
+</script>
+</body>
+</html>
