@@ -1,3 +1,4 @@
+import datetime
 import sqlite3
 import os
 
@@ -354,6 +355,63 @@ def get_task_by_id(cursor, task_id) -> Optional[Task]:
     if row:
         return Task(id=row[0], project_id=row[1], title=row[2], status=row[3], start_date=row[4], end_date=row[5], planned_duration=row[6], spent_time=row[7], calendar_event_id=row[8])
     return None
+
+def get_progress_stats(cursor, user_id) -> dict:
+    # Goals
+    cursor.execute('SELECT COUNT(*) FROM goals WHERE user_id = ? AND status = "active"', (user_id,))
+    active_goals = cursor.fetchone()[0]
+    cursor.execute('SELECT COUNT(*) FROM goals WHERE user_id = ? AND status = "completed"', (user_id,))
+    completed_goals = cursor.fetchone()[0]
+
+    # Projects
+    cursor.execute('''
+        SELECT COUNT(*) FROM projects p 
+        JOIN goals g ON p.goal_id = g.id 
+        WHERE g.user_id = ? AND p.status = "active"
+    ''', (user_id,))
+    active_projects = cursor.fetchone()[0]
+    cursor.execute('''
+        SELECT COUNT(*) FROM projects p 
+        JOIN goals g ON p.goal_id = g.id 
+        WHERE g.user_id = ? AND p.status = "completed"
+    ''', (user_id,))
+    completed_projects = cursor.fetchone()[0]
+
+    # Tasks
+    cursor.execute('''
+        SELECT COUNT(*) FROM tasks t
+        JOIN projects p ON t.project_id = p.id
+        JOIN goals g ON p.goal_id = g.id
+        WHERE g.user_id = ? AND t.status = "pending"
+    ''', (user_id,))
+    pending_tasks = cursor.fetchone()[0]
+    cursor.execute('''
+        SELECT COUNT(*) FROM tasks t
+        JOIN projects p ON t.project_id = p.id
+        JOIN goals g ON p.goal_id = g.id
+        WHERE g.user_id = ? AND t.status = "completed"
+    ''', (user_id,))
+    completed_tasks = cursor.fetchone()[0]
+
+    # This week
+    week_start = (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=7)).isoformat()
+    cursor.execute('''
+        SELECT COUNT(*) FROM tasks t
+        JOIN projects p ON t.project_id = p.id
+        JOIN goals g ON p.goal_id = g.id
+        WHERE g.user_id = ? AND t.status = "completed" AND t.end_date >= ?
+    ''', (user_id, week_start))
+    weekly_completed = cursor.fetchone()[0]
+
+    return {
+        "active_goals": active_goals,
+        "completed_goals": completed_goals,
+        "active_projects": active_projects,
+        "completed_projects": completed_projects,
+        "pending_tasks": pending_tasks,
+        "completed_tasks": completed_tasks,
+        "weekly_completed": weekly_completed
+    }
 
 # Delete
 def delete_goal(conn, cursor, goal_id):

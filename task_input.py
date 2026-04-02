@@ -7,7 +7,7 @@ from calendar_manager import TokenExpiredError, delete_event
 from main import process_task
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes, CallbackQueryHandler
 from dotenv import load_dotenv
-from database import clear_google_token, complete_goal, complete_project, delete_goal, delete_project, delete_task, get_goal_by_id, get_project_by_id, get_projects_by_user_id, get_task_by_id, get_tasks_by_project_id, get_tasks_by_user_id, init_db, insert_goal, insert_project, insert_user, get_user_by_telegram_id, get_goals_by_user_id, get_projects_by_goal_id, insert_task, reopen_goal, reopen_project, update_goal, update_project, update_task, update_task_status, update_user
+from database import clear_google_token, complete_goal, complete_project, delete_goal, delete_project, delete_task, get_goal_by_id, get_progress_stats, get_project_by_id, get_projects_by_user_id, get_task_by_id, get_tasks_by_project_id, get_tasks_by_user_id, init_db, insert_goal, insert_project, insert_user, get_user_by_telegram_id, get_goals_by_user_id, get_projects_by_goal_id, insert_task, reopen_goal, reopen_project, update_goal, update_project, update_task, update_task_status, update_user
 from session import SessionState, get_session, clear_session, update_session
 from prompts import MAIN_MENU_KEYBOARD, send_confirmation_prompt, send_due_date_prompt, send_edit_due_date_prompt, send_edit_goal_importance_prompt, send_edit_goal_menu, send_edit_preferred_language_prompt, send_edit_project_frequency_prompt, send_edit_project_hours_prompt, send_edit_project_menu, send_goal_importance_prompt, send_goals_list, send_main_menu, send_oauth_prompt, send_preferred_language_prompt, send_project_daily_hours_prompt, send_project_frequency_prompt, send_project_monthly_hours_prompt, send_project_planning_menu, send_project_weekly_hours_prompt, send_projects_list, send_projects_prompt, send_goals_prompt, send_deadline_prompt, send_tasks_list, send_settings_menu
 from translations import t
@@ -597,6 +597,22 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
         goals = get_goals_by_user_id(cursor, user.id)
         await send_goals_list(query.message, goals, user.language)
     
+    elif data == "menu_progress":
+        stats = get_progress_stats(cursor, user.id)
+        msg = t("progress_title", user.language).format(nickname=user.nickname)
+        msg += f"\n\n🎯 {t('my_goals', user.language)}"
+        msg += f"\n  • {t('active', user.language)}: {stats['active_goals']}"
+        msg += f"\n  • {t('completed', user.language)}: {stats['completed_goals']}"
+        msg += f"\n\n📁 {t('my_projects', user.language)}"
+        msg += f"\n  • {t('active', user.language)}: {stats['active_projects']}"
+        msg += f"\n  • {t('completed', user.language)}: {stats['completed_projects']}"
+        msg += f"\n\n✅ {t('my_tasks', user.language)}"
+        msg += f"\n  • {t('pending', user.language)}: {stats['pending_tasks']}"
+        msg += f"\n  • {t('completed', user.language)}: {stats['completed_tasks']}"
+        msg += f"\n\n📅 {t('this_week', user.language)}"
+        msg += f"\n  • {t('tasks_completed', user.language)}: {stats['weekly_completed']}"
+        await query.message.reply_text(msg)
+
 async def error_handler(update, context):
     print(f"Error: {context.error}")
     import traceback
