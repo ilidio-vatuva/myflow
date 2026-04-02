@@ -4,6 +4,7 @@ import json
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
+import pytz
 
 # If modifying these scopes, delete the file token.json.
 SCOPES = ["https://www.googleapis.com/auth/calendar.events"]
@@ -42,7 +43,25 @@ def get_events(token):
             raise TokenExpiredError()
         raise
 
-
+def get_today_events(token):
+    try:
+        service = get_service(token)
+        madrid_tz = pytz.timezone('Europe/Madrid')
+        now = datetime.datetime.now(madrid_tz)
+        start_of_day = now.replace(hour=0, minute=0, second=0).isoformat()
+        end_of_day = now.replace(hour=23, minute=59, second=59).isoformat()
+        events_result = service.events().list(
+            calendarId="primary",
+            timeMin=start_of_day,
+            timeMax=end_of_day,
+            singleEvents=True,
+            orderBy="startTime"
+        ).execute()
+        return events_result.get("items", [])
+    except HttpError as error:
+        print(f"An error occurred: {error}")
+        return []
+    
 def create_event(token, title, description, start_time, end_time, transparent=False):
     event = {
       "summary": title,

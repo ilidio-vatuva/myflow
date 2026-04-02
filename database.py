@@ -226,6 +226,11 @@ def get_user_by_telegram_id(cursor, telegram_id) -> Optional[User]:
         return User(id=row[0], nickname=row[1], telegram_id=row[2], google_token=row[3], language=row[4])
     return None
 
+def get_all_users(cursor) -> list[User]:
+    cursor.execute('SELECT id, nickname, telegram_id, google_token, language FROM user WHERE google_token IS NOT NULL')
+    rows = cursor.fetchall()
+    return [User(id=row[0], nickname=row[1], telegram_id=row[2], google_token=row[3], language=row[4]) for row in rows]
+
 def get_goals_by_user_id(cursor, user_id) -> list[Goal]:
     cursor.execute('''
         select id, user_id, name, importance, description from goals where user_id = ?
