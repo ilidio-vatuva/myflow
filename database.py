@@ -32,7 +32,8 @@ def create_tables(conn, cursor):
             user_id integer not null references user(id) on delete cascade,
             name text not null,
             importance integer not null,
-            description text
+            description text,
+            status text default 'active'
         )
     ''')
     cursor.execute('''
@@ -43,7 +44,8 @@ def create_tables(conn, cursor):
             description text,
             due_date date,
             hours integer,
-            frequency text
+            frequency text,
+            status text default 'active'
         )
     ''')
     cursor.execute('''
@@ -112,6 +114,22 @@ def insert_message(conn, cursor, user_id, role, message):
     return cursor.lastrowid
 
 # Updates
+def complete_project(conn, cursor, project_id):
+    cursor.execute('UPDATE projects SET status = "completed" WHERE id = ?', (project_id,))
+    conn.commit()
+
+def reopen_project(conn, cursor, project_id):
+    cursor.execute('UPDATE projects SET status = "active" WHERE id = ?', (project_id,))
+    conn.commit()
+
+def complete_goal(conn, cursor, goal_id):
+    cursor.execute('UPDATE goals SET status = "completed" WHERE id = ?', (goal_id,))
+    conn.commit()
+
+def reopen_goal(conn, cursor, goal_id):
+    cursor.execute('UPDATE goals SET status = "active" WHERE id = ?', (goal_id,))
+    conn.commit()
+
 def update_task_status(conn, cursor, task_id, status, spent_time=None):
     update_task(conn, cursor, task_id, status=status, spent_time=spent_time)
 
@@ -233,20 +251,20 @@ def get_all_users(cursor) -> list[User]:
 
 def get_goals_by_user_id(cursor, user_id) -> list[Goal]:
     cursor.execute('''
-        select id, user_id, name, importance, description from goals where user_id = ?
+        select id, user_id, name, importance, description, status from goals where user_id = ?
     ''', (user_id,))
     rows = cursor.fetchall()
     if rows:
-        return [Goal(id=row[0], user_id=row[1], name=row[2], importance=row[3], description=row[4]) for row in rows]
+        return [Goal(id=row[0], user_id=row[1], name=row[2], importance=row[3], description=row[4], status=row[5]) for row in rows]
     return []
 
 def get_projects_by_goal_id(cursor, goal_id) -> list[Project]:
     cursor.execute('''
-        select id, name, description, due_date, hours, frequency from projects where goal_id = ?
+        select id, name, description, due_date, hours, frequency, status from projects where goal_id = ?
     ''', (goal_id,))
     rows = cursor.fetchall()
     if rows:
-        return [Project(id=row[0], goal_id=goal_id, name=row[1], description=row[2], due_date=row[3], hours=row[4], frequency=row[5]) for row in rows]
+        return [Project(id=row[0], goal_id=goal_id, name=row[1], description=row[2], due_date=row[3], hours=row[4], frequency=row[5], status=row[6]) for row in rows]
     return []
 
 def get_tasks_by_project_id(cursor, project_id, status=None) -> list[Task]:
@@ -300,25 +318,25 @@ def get_conversations_by_user_id(cursor, user_id) -> list[Conversation]:
 
 def get_project_by_id(cursor, project_id) -> Optional[Project]:
     cursor.execute('''
-        select id, goal_id, name, description, due_date, hours, frequency from projects where id = ?
+        select id, goal_id, name, description, due_date, hours, frequency, status from projects where id = ?
     ''', (project_id,))
     row = cursor.fetchone()
     if row:
-        return Project(id=row[0], goal_id=row[1], name=row[2], description=row[3], due_date=row[4], hours=row[5], frequency=row[6])
+        return Project(id=row[0], goal_id=row[1], name=row[2], description=row[3], due_date=row[4], hours=row[5], frequency=row[6], status=row[7])
     return None
 
 def get_goal_by_id(cursor, goal_id) -> Optional[Goal]:
     cursor.execute('''
-        select id, user_id, name, importance, description from goals where id = ?
+        select id, user_id, name, importance, description, status from goals where id = ?
     ''', (goal_id,))
     row = cursor.fetchone()
     if row:
-        return Goal(id=row[0], user_id=row[1], name=row[2], importance=row[3], description=row[4])
+        return Goal(id=row[0], user_id=row[1], name=row[2], importance=row[3], description=row[4], status=row[5])
     return None
 
 def get_projects_by_user_id(cursor, user_id) -> list[Project]:
     cursor.execute('''
-        select p.id, p.goal_id, p.name, p.description, p.due_date, p.hours, p.frequency 
+        select p.id, p.goal_id, p.name, p.description, p.due_date, p.hours, p.frequency, p.status
         from projects p
         join goals g on p.goal_id = g.id
         where g.user_id = ?

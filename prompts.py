@@ -282,12 +282,20 @@ async def send_main_menu(sender, user):
 async def send_goals_list(sender, goals, language="en-US"):
     keyboard = []
     for goal in sorted(goals, key=lambda goal: goal.name):
-        keyboard.append([InlineKeyboardButton(f"🎯 {goal.name}", callback_data=f"goal_projects_{goal.id}")])
-        keyboard.append([
-            InlineKeyboardButton("✏️ " + t("btn_edit", language), callback_data=f"edit_goal_{goal.id}"),
-            InlineKeyboardButton("🗑️ " + t("btn_delete", language), callback_data=f"delete_goal_{goal.id}"),
-            InlineKeyboardButton("📁 " + t("btn_projects", language), callback_data=f"goal_projects_{goal.id}")
-        ])
+        if goal.status == "completed":
+            keyboard.append([InlineKeyboardButton(f"🏁 {goal.name} ✅", callback_data=f"goal_projects_{goal.id}")])
+            keyboard.append([
+                InlineKeyboardButton("🔄 " + t("btn_reopen", language), callback_data=f"reopen_goal_{goal.id}"),
+                InlineKeyboardButton("🗑️ " + t("btn_delete", language), callback_data=f"delete_goal_{goal.id}"),
+                InlineKeyboardButton("📁 " + t("btn_projects", language), callback_data=f"goal_projects_{goal.id}")
+            ])
+        else:
+            keyboard.append([InlineKeyboardButton(f"🎯 {goal.name}", callback_data=f"goal_projects_{goal.id}")])
+            keyboard.append([
+                InlineKeyboardButton("✏️ " + t("btn_edit", language), callback_data=f"edit_goal_{goal.id}"),
+                InlineKeyboardButton("🗑️ " + t("btn_delete", language), callback_data=f"delete_goal_{goal.id}"),
+                InlineKeyboardButton("📁 " + t("btn_projects", language), callback_data=f"goal_projects_{goal.id}")
+            ])
     keyboard.append([InlineKeyboardButton(t("btn_new_goal", language), callback_data="new_goal")])
     keyboard.append([InlineKeyboardButton("❌ " + t("btn_cancel", language), callback_data="main_menu")])
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -297,12 +305,21 @@ async def send_goals_list(sender, goals, language="en-US"):
 async def send_projects_list(sender, projects, language="en-US"):
     keyboard = []
     for project in sorted(projects, key=lambda project: project.name):
-        keyboard.append([InlineKeyboardButton(f"📁 {project.name}", callback_data=f"project_tasks_{project.id}")])
-        keyboard.append([
-            InlineKeyboardButton("✏️ " + t("btn_edit", language), callback_data=f"edit_project_{project.id}"),
-            InlineKeyboardButton("🗑️ " + t("btn_delete", language), callback_data=f"delete_project_{project.id}"),
-            InlineKeyboardButton("✅ " + t("btn_tasks", language), callback_data=f"project_tasks_{project.id}")
-        ])
+        if project.status == "completed":
+            keyboard.append([InlineKeyboardButton(f"🏁 {project.name} ✅", callback_data=f"project_tasks_{project.id}")])
+            keyboard.append([
+                InlineKeyboardButton("🔄 " + t("btn_reopen", language), callback_data=f"reopen_project_{project.id}"),
+                InlineKeyboardButton("🗑️ " + t("btn_delete", language), callback_data=f"delete_project_{project.id}"),
+                InlineKeyboardButton("✅ " + t("btn_tasks", language), callback_data=f"project_tasks_{project.id}")
+            ])
+        else:
+            keyboard.append([InlineKeyboardButton(f"📁 {project.name}", callback_data=f"project_tasks_{project.id}")])
+            keyboard.append([
+                InlineKeyboardButton("✏️ " + t("btn_edit", language), callback_data=f"edit_project_{project.id}"),
+                InlineKeyboardButton("🗑️ " + t("btn_delete", language), callback_data=f"delete_project_{project.id}"),
+                InlineKeyboardButton("✅ " + t("btn_tasks", language), callback_data=f"project_tasks_{project.id}"),
+                InlineKeyboardButton("🏁 " + t("btn_complete", language), callback_data=f"complete_project_{project.id}")
+            ])
     keyboard.append([InlineKeyboardButton(t("btn_new_project", language), callback_data="new_project")])
     keyboard.append([InlineKeyboardButton("❌ " + t("btn_cancel", language), callback_data="main_menu")])
     reply_markup = InlineKeyboardMarkup(keyboard)

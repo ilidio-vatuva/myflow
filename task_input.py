@@ -2,12 +2,12 @@ import datetime
 import os
 
 from oauthlib.uri_validate import query
-from telegram import Update
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from calendar_manager import TokenExpiredError, delete_event
 from main import process_task
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes, CallbackQueryHandler
 from dotenv import load_dotenv
-from database import clear_google_token, delete_goal, delete_project, delete_task, get_goal_by_id, get_project_by_id, get_projects_by_user_id, get_task_by_id, get_tasks_by_project_id, get_tasks_by_user_id, init_db, insert_goal, insert_project, insert_user, get_user_by_telegram_id, get_goals_by_user_id, get_projects_by_goal_id, insert_task, update_goal, update_project, update_task, update_task_status, update_user
+from database import clear_google_token, complete_goal, complete_project, delete_goal, delete_project, delete_task, get_goal_by_id, get_project_by_id, get_projects_by_user_id, get_task_by_id, get_tasks_by_project_id, get_tasks_by_user_id, init_db, insert_goal, insert_project, insert_user, get_user_by_telegram_id, get_goals_by_user_id, get_projects_by_goal_id, insert_task, reopen_goal, reopen_project, update_goal, update_project, update_task, update_task_status, update_user
 from session import SessionState, get_session, clear_session, update_session
 from prompts import MAIN_MENU_KEYBOARD, send_confirmation_prompt, send_due_date_prompt, send_edit_due_date_prompt, send_edit_goal_importance_prompt, send_edit_goal_menu, send_edit_preferred_language_prompt, send_edit_project_frequency_prompt, send_edit_project_hours_prompt, send_edit_project_menu, send_goal_importance_prompt, send_goals_list, send_main_menu, send_oauth_prompt, send_preferred_language_prompt, send_project_daily_hours_prompt, send_project_frequency_prompt, send_project_monthly_hours_prompt, send_project_planning_menu, send_project_weekly_hours_prompt, send_projects_list, send_projects_prompt, send_goals_prompt, send_deadline_prompt, send_tasks_list, send_settings_menu
 from translations import t
@@ -559,6 +559,44 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.message.reply_text(t("planning_skipped", user.language))
         await query.message.reply_text("👇", reply_markup=MAIN_MENU_KEYBOARD)
 
+    elif data.startswith("complete_project_"):
+        project_id = int(data.split("_")[-1])
+        complete_project(conn, cursor, project_id)
+        await query.message.reply_text(t("project_completed", user.language))
+        # Check if all projects in goal are completed
+        project = get_project_by_id(cursor, project_id)
+        goal_projects = get_projects_by_goal_id(cursor, project.goal_id)
+        if all(p.status == "completed" for p in goal_projects):
+            keyboard = InlineKeyboardMarkup([[
+                InlineKeyboardButton("🏁 " + t("btn_yes", user.language), callback_data=f"complete_goal_{project.goal_id}"),
+                InlineKeyboardButton("📋 " + t("btn_no", user.language), callback_data="main_menu")
+            ]])
+            await query.message.reply_text(t("all_projects_done", user.language), reply_markup=keyboard)
+        else:
+            projects = get_projects_by_user_id(cursor, user.id)
+            await send_projects_list(query.message, projects, user.language)
+    
+    elif data.startswith("complete_goal_"):
+        goal_id = int(data.split("_")[-1])
+        complete_goal(conn, cursor, goal_id)
+        await query.message.reply_text(t("goal_completed", user.language))
+        goals = get_goals_by_user_id(cursor, user.id)
+        await send_goals_list(query.message, goals, user.language)
+    
+    elif data.startswith("reopen_project_"):
+        project_id = int(data.split("_")[-1])
+        reopen_project(conn, cursor, project_id)
+        await query.message.reply_text(t("project_reopened", user.language))
+        projects = get_projects_by_user_id(cursor, user.id)
+        await send_projects_list(query.message, projects, user.language)
+    
+    elif data.startswith("reopen_goal_"):
+        goal_id = int(data.split("_")[-1])
+        reopen_goal(conn, cursor, goal_id)
+        await query.message.reply_text(t("goal_reopened", user.language))
+        goals = get_goals_by_user_id(cursor, user.id)
+        await send_goals_list(query.message, goals, user.language)
+    
 async def error_handler(update, context):
     print(f"Error: {context.error}")
     import traceback

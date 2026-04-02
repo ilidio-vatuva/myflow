@@ -16,6 +16,7 @@ class Goal:
     name: str
     importance: int
     description: Optional[str] = None
+    status: str = "active"
 
 @dataclass
 class Project:
@@ -26,6 +27,7 @@ class Project:
     due_date: Optional[str] = None
     hours: Optional[int] = None
     frequency: Optional[str] = None
+    status: str = "active"
 
 @dataclass
 class Task:
