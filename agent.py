@@ -17,16 +17,20 @@ def get_system_prompt():
     with open("knowledge/system_prompt.md", "r") as f:
         return f.read()
 
-def execute_task(metadata, events):
+def execute_task(metadata, events, conversation_history=None):
 
     system_prompt = get_system_prompt()
 
-    messages = [
-        {
-          "role": "user",
-           "content": f"""Here are all task details: {metadata} And events: {events}""",
-        }
-    ]
+    # Inject history first so Sir Agent has context, then append the current task
+    messages = []
+    if conversation_history:
+        for conv in conversation_history:
+            messages.append({"role": conv.role, "content": conv.message})
+
+    messages.append({
+        "role": "user",
+        "content": f"""Here are all task details: {metadata} And events: {events}""",
+    })
 
     client = anthropic.Anthropic()
     response = client.messages.create(

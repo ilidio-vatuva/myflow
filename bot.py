@@ -1,4 +1,5 @@
 import datetime
+import json
 import os
 import secrets
 
@@ -8,13 +9,31 @@ from calendar_manager import TokenExpiredError, delete_event
 from main import process_task
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes, CallbackQueryHandler
 from dotenv import load_dotenv
-from database import clear_google_token, complete_goal, complete_project, create_dashboard_token, create_dashboard_token, delete_goal, delete_project, delete_task, get_goal_by_id, get_progress_stats, get_project_by_id, get_projects_by_user_id, get_task_by_id, get_tasks_by_project_id, get_tasks_by_user_id, init_db, insert_goal, insert_project, insert_user, get_user_by_telegram_id, get_goals_by_user_id, get_projects_by_goal_id, insert_task, reopen_goal, reopen_project, update_goal, update_project, update_task, update_task_status, update_user
+from database import clear_google_token, complete_goal, complete_project, create_dashboard_token, create_dashboard_token, delete_goal, delete_project, delete_task, get_goal_by_id, get_progress_stats, get_project_by_id, get_projects_by_user_id, get_task_by_id, get_tasks_by_project_id, get_tasks_by_user_id, init_db, insert_goal, insert_project, insert_user, get_user_by_telegram_id, get_goals_by_user_id, get_projects_by_goal_id, insert_task, insert_message, get_recent_conversations, reopen_goal, reopen_project, update_goal, update_project, update_task, update_task_status, update_user
 from session import SessionState, get_session, clear_session, update_session
 from prompts import MAIN_MENU_KEYBOARD, send_confirmation_prompt, send_due_date_prompt, send_edit_due_date_prompt, send_edit_goal_importance_prompt, send_edit_goal_menu, send_edit_preferred_language_prompt, send_edit_project_frequency_prompt, send_edit_project_hours_prompt, send_edit_project_menu, send_goal_importance_prompt, send_goals_list, send_main_menu, send_oauth_prompt, send_preferred_language_prompt, send_project_daily_hours_prompt, send_project_frequency_prompt, send_project_monthly_hours_prompt, send_project_planning_menu, send_project_weekly_hours_prompt, send_projects_list, send_projects_prompt, send_goals_prompt, send_deadline_prompt, send_tasks_list, send_settings_menu
 from translations import t
 
 if os.path.exists('.env'):
     load_dotenv()
+
+def save_conversation_exchange(conn, cursor, user_id: int, metadata: dict, result: dict):
+    """Save a lean summary of each exchange to keep history tokens small."""
+    user_summary = json.dumps({
+        "task": metadata.get("task"),
+        "project": metadata.get("project_name"),
+        "goal": metadata.get("goal_name"),
+        "deadline": metadata.get("deadline"),
+        "reschedule_reason": metadata.get("reschedule_reason"),
+    })
+    assistant_summary = json.dumps({
+        "scheduled_title": result["calendar_event"]["title"],
+        "slot": result["schedule"]["recommended_slot"],
+        "priority": result["priority"]["level"],
+        "strategic_suggestion": result.get("strategic_suggestion"),
+    })
+    insert_message(conn, cursor, user_id, "user", user_summary)
+    insert_message(conn, cursor, user_id, "assistant", assistant_summary)
 
 def format_output_msg(data, user):
     assumptions = ''
@@ -159,17 +178,24 @@ async def reply_telegram(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     "deadline": "reschedule",
                     "reschedule_reason": update.message.text
                 }
+                # Delete old calendar event before scheduling the new one
+                if task.calendar_event_id:
+                    delete_event(user.google_token, task.calendar_event_id)
+
                 await update.message.reply_text(t("scheduling_task", user.language))
                 try:
-                    result = process_task(user.google_token, metadata)
+                    history = get_recent_conversations(cursor, user.id, limit=5)
+                    result = process_task(user.google_token, metadata, conversation_history=history)
                 except TokenExpiredError:
                     clear_google_token(conn, cursor, user.id)
                     await send_oauth_prompt(update.message, user.telegram_id, t("oauth_reconnect", user.language))
                     return
                 update_task(conn, cursor, task_id,
                     start_date=result["calendar_event"]["suggested_start_time"],
-                    end_date=result["calendar_event"]["suggested_end_time"]
+                    end_date=result["calendar_event"]["suggested_end_time"],
+                    calendar_event_id=result["calendar_event"].get("id")
                 )
+                save_conversation_exchange(conn, cursor, user.id, metadata, result)
                 clear_session(telegram_user_id)
                 await update.message.reply_text(format_output_msg(result, user))
                 await update.message.reply_text("👇", reply_markup=MAIN_MENU_KEYBOARD)
@@ -231,7 +257,8 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         "task": task, "deadline": deadline }
             await query.message.reply_text(t("scheduling_task", user.language))
             try:
-                result = process_task(user.google_token, metadata)
+                history = get_recent_conversations(cursor, user.id, limit=5)
+                result = process_task(user.google_token, metadata, conversation_history=history)
             except TokenExpiredError:
                 clear_google_token(conn, cursor, user.id)
                 await send_oauth_prompt(query.message, user.telegram_id, t("oauth_reconnect", user.language))
@@ -246,6 +273,7 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 planned_duration=result["calendar_event"]["duration"],
                 calendar_event_id=result["calendar_event"].get("id")
             )
+            save_conversation_exchange(conn, cursor, user.id, metadata, result)
             clear_session(telegram_user_id)
             await query.message.reply_text(format_output_msg(result, user))
             await query.message.reply_text("👇", reply_markup=MAIN_MENU_KEYBOARD)
@@ -572,7 +600,8 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
         }
         await query.message.reply_text(t("scheduling_task", user.language))
         try:
-            result = process_task(user.google_token, metadata)
+            history = get_recent_conversations(cursor, user.id, limit=5)
+            result = process_task(user.google_token, metadata, conversation_history=history)
         except TokenExpiredError:
             clear_google_token(conn, cursor, user.id)
             await send_oauth_prompt(query.message, user.telegram_id, t("oauth_reconnect", user.language))
@@ -586,6 +615,7 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
             planned_duration=result["calendar_event"]["duration"],
             calendar_event_id=result["calendar_event"].get("id")
         )
+        save_conversation_exchange(conn, cursor, user.id, metadata, result)
         await query.message.reply_text(format_output_msg(result, user))
 
     elif data.startswith("plan_create_"):

@@ -323,6 +323,22 @@ def get_tasks_by_user_id(cursor, user_id, status=None) -> list[Task]:
                     spent_time=row[7], calendar_event_id=row[8]) for row in rows]
     return []
 
+def get_recent_conversations(cursor, user_id: int, limit: int = 5) -> list[Conversation]:
+    """Return the last `limit` exchanges (user+assistant pairs), oldest first."""
+    cursor.execute(
+        '''
+        SELECT id, user_id, role, message, created_at
+        FROM conversations
+        WHERE user_id = ?
+        ORDER BY id DESC
+        LIMIT ?
+        ''',
+        (user_id, limit * 2)  # *2 because each exchange = 2 rows
+    )
+    rows = cursor.fetchall()
+    rows.reverse()  # oldest first so Claude reads history naturally
+    return [Conversation(id=row[0], user_id=row[1], role=row[2], message=row[3], created_at=row[4]) for row in rows]
+
 def get_conversations_by_user_id(cursor, user_id) -> list[Conversation]:
     cursor.execute('''
         select id, role, message, created_at from conversations where user_id = ? order by created_at
