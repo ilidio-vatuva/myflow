@@ -25,6 +25,7 @@ class SessionState(Enum):
     WAITING_FOR_GOAL_NAME = "waiting_for_goal_name"
     WAITING_FOR_GOAL_DESC = "waiting_for_goal_desc"
     WAITING_FOR_GOAL_IMPORTANCE = "waiting_for_goal_importance"
+    WAITING_FOR_RESCHEDULE_REASON = "waiting_for_reschedule_reason"
     
     # Management flows
     EDITING_GOAL_NAME = "editing_goal_name"

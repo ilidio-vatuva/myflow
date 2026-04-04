@@ -3,7 +3,7 @@ import pytz
 from database import get_all_users, init_db, get_tasks_by_user_id, get_projects_by_user_id, get_tasks_by_project_id
 from calendar_manager import get_today_events
 from translations import t
-from task_input import get_bot
+from bot import get_bot
 from prompts import send_planning_projects_list, send_projects_list
 from models import User
 

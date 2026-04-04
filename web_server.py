@@ -6,9 +6,9 @@ from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from database import get_goals_by_user_id, get_progress_stats, get_projects_by_goal_id, get_tasks_by_project_id, get_tasks_by_user_id, get_user_by_dashboard_token, update_user, get_user_by_telegram_id, init_db, get_user_by_telegram_id
 from oauth import fetch_token
-from task_input import get_bot
+from bot import get_bot
 from telegram import Update
-from task_input import app as telegram_app
+from bot import app as telegram_app
 from translations import t
 from contextlib import asynccontextmanager
 from session import get_session, clear_session

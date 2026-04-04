@@ -16,16 +16,22 @@ from translations import t
 if os.path.exists('.env'):
     load_dotenv()
 
-def format_output_msg(data):
-    assumptions=''
+def format_output_msg(data, user):
+    assumptions = ''
     for assumption in data["notes"]["assumptions"]:
         assumptions = assumptions + f'- {assumption} \n'
 
-    risks=''
+    risks = ''
     for risk in data["notes"]["risks"]:
         risks = risks + f'- {risk} \n'
 
-    return f"""✅ Scheduled: {data["calendar_event"]["title"]} — {data["schedule"]["recommended_slot"]}\n\n\n📝 Assumptions:\n{assumptions}\n\n⚠️ Risks:\n{risks}"""
+    msg = f"""✅ Scheduled: {data["calendar_event"]["title"]} — {data["schedule"]["recommended_slot"]}\n\n\n📝 {t('assumptions', user.language)}:\n{assumptions}\n\n⚠️ {t('risks', user.language)}:\n{risks}"""
+
+    strategic = data.get("strategic_suggestion")
+    if strategic:
+        msg += f"\n\n{t('strategic_suggestion', user.language)}:\n{strategic}"
+
+    return msg
 
 def get_bot():
     token = os.getenv('TELEGRAM_BOT_TOKEN')
@@ -132,6 +138,42 @@ async def reply_telegram(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await update.message.reply_text(t("nickname_updated", user.language).format(nickname=new_nickname))
                 await send_main_menu(update.message, user)
 
+            elif session["state"] == SessionState.WAITING_FOR_RESCHEDULE_REASON:
+                task_id = session.get("task_id")
+                task = get_task_by_id(cursor, task_id)
+                project = get_project_by_id(cursor, task.project_id)
+                goal = get_goal_by_id(cursor, project.goal_id)
+                now = datetime.datetime.now(datetime.timezone.utc)
+                metadata = {
+                    "user_nickname": user.nickname,
+                    "preferred_language": user.language,
+                    **build_date_context(),
+                    "current_date": now.strftime("%A %d %B %Y, %H:%M UTC"),
+                    "current_time_utc": now.strftime("%H:%M UTC"),
+                    "earliest_schedule_time": (now + datetime.timedelta(minutes=30)).strftime("%A %d %B %Y, %H:%M UTC"),
+                    "goal_name": goal.name, "goal_description": goal.description, "goal_importance": goal.importance,
+                    "project_name": project.name, "project_description": project.description,
+                    "project_due_date": project.due_date, "project_hours": project.hours,
+                    "project_frequency": project.frequency,
+                    "task": task.title,
+                    "deadline": "reschedule",
+                    "reschedule_reason": update.message.text
+                }
+                await update.message.reply_text(t("scheduling_task", user.language))
+                try:
+                    result = process_task(user.google_token, metadata)
+                except TokenExpiredError:
+                    clear_google_token(conn, cursor, user.id)
+                    await send_oauth_prompt(update.message, user.telegram_id, t("oauth_reconnect", user.language))
+                    return
+                update_task(conn, cursor, task_id,
+                    start_date=result["calendar_event"]["suggested_start_time"],
+                    end_date=result["calendar_event"]["suggested_end_time"]
+                )
+                clear_session(telegram_user_id)
+                await update.message.reply_text(format_output_msg(result, user))
+                await update.message.reply_text("👇", reply_markup=MAIN_MENU_KEYBOARD)
+
             else:
                 await update.message.reply_text(t("processing_error", user.language))
                 clear_session(telegram_user_id)
@@ -176,11 +218,14 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
         goal = get_goal_by_id(cursor, project.goal_id)
 
         if task:
+            now = datetime.datetime.now(datetime.timezone.utc)
             metadata = {
                         "user_nickname": user.nickname,
-                        "current_date": datetime.datetime.now(datetime.timezone.utc).isoformat(),
-                        "current_time_utc": datetime.datetime.now(datetime.timezone.utc).strftime("%H:%M UTC"),
-                        "earliest_schedule_time": (datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(minutes=30)).isoformat(),
+                        "preferred_language": user.language,
+                        **build_date_context(),
+                        "current_date": now.strftime("%A %d %B %Y, %H:%M UTC"),
+                        "current_time_utc": now.strftime("%H:%M UTC"),
+                        "earliest_schedule_time": (now + datetime.timedelta(minutes=30)).strftime("%A %d %B %Y, %H:%M UTC"),
                         "goal_name": goal.name, "goal_description": goal.description, "goal_importance": goal.importance, 
                         "project_name": project.name, "project_description": project.description, "project_due_date": project.due_date, "project_hours": project.hours, "project_frequency": project.frequency,
                         "task": task, "deadline": deadline }
@@ -202,7 +247,7 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 calendar_event_id=result["calendar_event"].get("id")
             )
             clear_session(telegram_user_id)
-            await query.message.reply_text(format_output_msg(result))
+            await query.message.reply_text(format_output_msg(result, user))
             await query.message.reply_text("👇", reply_markup=MAIN_MENU_KEYBOARD)
         else:
             await query.message.reply_text(t("project_created_success", user.language))
@@ -240,12 +285,10 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
         project_id = insert_project(conn, cursor, goal_id, project_name, project_description, due_date, project_hours, project_frequency)
         task = session.get("task")
         if task:
-            # came from task creation flow
             update_session(telegram_user_id, {"project": project_id})
             update_session(telegram_user_id, {"state": SessionState.WAITING_FOR_DEADLINE})
             await send_deadline_prompt(query.message, user.language)
         else:
-            # came from project management flow
             await query.message.reply_text(t("project_created_success", user.language))
             clear_session(telegram_user_id)
             projects = get_projects_by_user_id(cursor, user.id)
@@ -351,7 +394,6 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await send_edit_goal_importance_prompt(query.message, user.language)
 
     elif data == "menu_projects":
-        goals = get_goals_by_user_id(cursor, user.id)
         user_projects = get_projects_by_user_id(cursor, user.id)
         await send_projects_list(query.message, user_projects, user.language)
 
@@ -428,7 +470,18 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     elif data.startswith("complete_task_"):
         task_id = int(data.split("_")[-1])
+        task = get_task_by_id(cursor, task_id)
+        spent_minutes = None
+        if task.start_date:
+            try:
+                start = datetime.datetime.fromisoformat(task.start_date.replace("Z", "+00:00"))
+                now = datetime.datetime.now(datetime.timezone.utc)
+                spent_minutes = int((now - start).total_seconds() / 60)
+            except Exception:
+                pass
         update_task_status(conn, cursor, task_id, "completed")
+        if spent_minutes is not None:
+            update_task(conn, cursor, task_id, spent_time=spent_minutes)
         await query.message.reply_text(t("task_completed", user.language))
         project_id = session.get("project_id")
         if project_id:
@@ -458,38 +511,8 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     elif data.startswith("reschedule_task_"):
         task_id = int(data.split("_")[-1])
-        task = get_task_by_id(cursor, task_id)
-        project = get_project_by_id(cursor, task.project_id)
-        goal = get_goal_by_id(cursor, project.goal_id)
-        
-        metadata = {
-            "user_nickname": user.nickname,
-            "current_date": datetime.datetime.now(datetime.timezone.utc).isoformat(),
-            "current_time_utc": datetime.datetime.now(datetime.timezone.utc).strftime("%H:%M UTC"),
-            "earliest_schedule_time": (datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(minutes=30)).isoformat(),
-            "goal_name": goal.name, "goal_description": goal.description, "goal_importance": goal.importance,
-            "project_name": project.name, "project_description": project.description, "project_due_date": project.due_date, "project_hours": project.hours, "project_frequency": project.frequency,
-            "task": task.title, "deadline": "reschedule"
-        }
-        await query.message.reply_text(t("scheduling_task", user.language))
-        try:
-            result = process_task(user.google_token, metadata)
-        except TokenExpiredError:
-            clear_google_token(conn, cursor, user.id)
-            await send_oauth_prompt(query.message, user.telegram_id, t("oauth_reconnect", user.language))
-            return
-        update_task(conn, cursor, task_id,
-            start_date=result["calendar_event"]["suggested_start_time"],
-            end_date=result["calendar_event"]["suggested_end_time"]
-        )
-        await query.message.reply_text(format_output_msg(result))
-        await query.message.reply_text("👇", reply_markup=MAIN_MENU_KEYBOARD)
-        project_id = session.get("project_id")
-        if project_id:
-            tasks = get_tasks_by_project_id(cursor, project_id, status="pending")
-        else:
-            tasks = get_tasks_by_user_id(cursor, user.id, status="pending")
-        await send_tasks_list(query.message, tasks, user.language)
+        update_session(telegram_user_id, {"task_id": task_id, "state": SessionState.WAITING_FOR_RESCHEDULE_REASON})
+        await query.message.reply_text(t("reschedule_reason_prompt", user.language))
     
     elif data.startswith("new_task"):
         project_id = session.get("project_id")
@@ -513,6 +536,11 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif data == "main_menu":
         await send_main_menu(query.message, user)
 
+    elif data == "cancel_confirmation":
+        clear_session(telegram_user_id)
+        await query.message.reply_text(t("action_cancelled", user.language))
+        await query.message.reply_text("👇", reply_markup=MAIN_MENU_KEYBOARD)
+
     elif data == "menu_tasks":
         tasks = get_tasks_by_user_id(cursor, user.id, status="pending")
         await send_tasks_list(query.message, tasks, user.language)
@@ -526,11 +554,15 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
         project_id = int(data.split("_")[-1])
         project = get_project_by_id(cursor, project_id)
         goal = get_goal_by_id(cursor, project.goal_id)
+        
+        now = datetime.datetime.now(datetime.timezone.utc)
         metadata = {
             "user_nickname": user.nickname,
-            "current_date": datetime.datetime.now(datetime.timezone.utc).isoformat(),
-            "current_time_utc": datetime.datetime.now(datetime.timezone.utc).strftime("%H:%M UTC"),
-            "earliest_schedule_time": (datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(minutes=30)).isoformat(),
+            "preferred_language": user.language,
+            **build_date_context(),
+            "current_date": now.strftime("%A %d %B %Y, %H:%M UTC"),
+            "current_time_utc": now.strftime("%H:%M UTC"),
+            "earliest_schedule_time": (now + datetime.timedelta(minutes=30)).strftime("%A %d %B %Y, %H:%M UTC"),
             "goal_name": goal.name, "goal_description": goal.description, "goal_importance": goal.importance,
             "project_name": project.name, "project_description": project.description, 
             "project_due_date": project.due_date, "project_hours": project.hours, 
@@ -539,7 +571,12 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "deadline": "this_week"
         }
         await query.message.reply_text(t("scheduling_task", user.language))
-        result = process_task(user.google_token, metadata)
+        try:
+            result = process_task(user.google_token, metadata)
+        except TokenExpiredError:
+            clear_google_token(conn, cursor, user.id)
+            await send_oauth_prompt(query.message, user.telegram_id, t("oauth_reconnect", user.language))
+            return
         insert_task(conn, cursor,
             project_id=project_id,
             title=result["calendar_event"]["title"],
@@ -549,7 +586,7 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
             planned_duration=result["calendar_event"]["duration"],
             calendar_event_id=result["calendar_event"].get("id")
         )
-        await query.message.reply_text(format_output_msg(result))
+        await query.message.reply_text(format_output_msg(result, user))
 
     elif data.startswith("plan_create_"):
         project_id = int(data.split("_")[-1])
@@ -564,7 +601,6 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
         project_id = int(data.split("_")[-1])
         complete_project(conn, cursor, project_id)
         await query.message.reply_text(t("project_completed", user.language))
-        # Check if all projects in goal are completed
         project = get_project_by_id(cursor, project_id)
         goal_projects = get_projects_by_goal_id(cursor, project.goal_id)
         if all(p.status == "completed" for p in goal_projects):
@@ -619,19 +655,28 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = get_user_by_telegram_id(cursor, telegram_user_id)
     
     if not user:
-        # New user — start onboarding
         update_session(telegram_user_id, {"state": SessionState.WAITING_FOR_PREFERRED_LANGUAGE})
         await send_preferred_language_prompt(update.message)
         return
     await send_main_menu(update.message, user)
 
+def build_date_context():
+    now = datetime.datetime.now(datetime.timezone.utc)
+    days = {}
+    for i in range(1, 8):
+        day = now + datetime.timedelta(days=i)
+        days[day.strftime("%A").lower()] = day.strftime("%A %d %B %Y")
+    return {
+        "current_date": now.strftime("%A %d %B %Y, %H:%M UTC"),
+        "current_time_utc": now.strftime("%H:%M UTC"),
+        "earliest_schedule_time": (now + datetime.timedelta(minutes=30)).strftime("%A %d %B %Y, %H:%M UTC"),
+        "next_days": days  # e.g. {"monday": "Monday 06 April 2026", "tuesday": ...}
+    }
 
-
-token=os.getenv('TELEGRAM_BOT_TOKEN')
+token = os.getenv('TELEGRAM_BOT_TOKEN')
 app = ApplicationBuilder().token(token).build() if token else None
 
 app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, reply_telegram))
 app.add_handler(CallbackQueryHandler(handle_button))
 app.add_error_handler(error_handler)
 app.add_handler(CommandHandler("start", start_command))
-
