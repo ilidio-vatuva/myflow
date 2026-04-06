@@ -89,6 +89,8 @@ translations = {
         "reschedule_reason_prompt": "📅 When would you like to reschedule this task? (e.g. 'next week', 'after April 15th', 'tomorrow morning')",
         "strategic_suggestion": "💡 Strategic suggestion:",
         "action_cancelled": "Action cancelled!",
+        "week": "Week",
+        "frequency": "Frequency",
         # buttons
         "btn_connect_calendar": "🔗 Connect Google Calendar",
         "btn_new_project": "➕ New Project",
@@ -218,6 +220,8 @@ translations = {
         "reschedule_reason_prompt": "📅 Quando gostaria de reagendar esta tarefa? (e.g. 'próxima semana', 'depois de 15 de abril', 'amanhã de manhã')",
         "strategic_suggestion": "💡 Sugestão estratégica:",
         "action_cancelled": "Ação cancelada!",
+        "week": "Semana",
+        "frequency": "Frequência",
         # buttons
         "btn_connect_calendar": "🔗 Ligar Google Calendar",
         "btn_new_project": "➕ Novo Projeto",
@@ -347,6 +351,8 @@ translations = {
         "reschedule_reason_prompt": "📅 ¿Cuándo te gustaría reprogramar esta tarea? (e.g. 'próxima semana', 'después de 15 de abril', 'mañana por la mañana')",
         "strategic_suggestion": "💡 Sugerencia estratégica:",
         "action_cancelled": "¡Acción cancelada!",
+        "week": "Semana",
+        "frequency": "Frecuencia",
         # buttons
         "btn_connect_calendar": "🔗 Conectar Google Calendar",
         "btn_new_project": "➕ Nuevo Proyecto",

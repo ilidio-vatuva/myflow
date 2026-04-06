@@ -198,7 +198,7 @@ async def reply_telegram(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 save_conversation_exchange(conn, cursor, user.id, metadata, result)
                 clear_session(telegram_user_id)
                 await update.message.reply_text(format_output_msg(result, user))
-                await update.message.reply_text("👇", reply_markup=MAIN_MENU_KEYBOARD)
+                await update.message.reply_text("_", reply_markup=MAIN_MENU_KEYBOARD)
 
             else:
                 await update.message.reply_text(t("processing_error", user.language))
@@ -228,6 +228,11 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
         tasks = get_tasks_by_project_id(cursor, project_id, status="pending")
         update_session(telegram_user_id, {"project_id": project_id})
         await send_tasks_list(query.message, tasks, user.language)
+
+    elif data.startswith("project_details_"):
+        project_id = int(data.split("_")[-1])
+        project = get_project_by_id(cursor, project_id)
+        await query.message.reply_text(f"📁 {project.name}\n\nℹ️{project.description}\n\n{t('btn_due_date', user.language)}: {project.due_date if project.due_date else t('btn_no_due_date', user.language)}\n{t('btn_hours', user.language)}: {project.hours}h/{t('week', user.language)}\n{t('frequency', user.language)}: {t(project.frequency, user.language)}")
 
     elif data.startswith("project_"):
         project_id = int(data.split("_")[1])
@@ -276,7 +281,7 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
             save_conversation_exchange(conn, cursor, user.id, metadata, result)
             clear_session(telegram_user_id)
             await query.message.reply_text(format_output_msg(result, user))
-            await query.message.reply_text("👇", reply_markup=MAIN_MENU_KEYBOARD)
+            await query.message.reply_text("_", reply_markup=MAIN_MENU_KEYBOARD)
         else:
             await query.message.reply_text(t("project_created_success", user.language))
             clear_session(telegram_user_id)
@@ -401,7 +406,7 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
         goal_id = session.get("goal_id")
         delete_goal(conn, cursor, goal_id)
         await query.message.reply_text(t("goal_deleted", user.language))
-        await query.message.reply_text("👇", reply_markup=MAIN_MENU_KEYBOARD) 
+        await query.message.reply_text("_", reply_markup=MAIN_MENU_KEYBOARD) 
 
     elif data.startswith("egoal_name_"):
         goal_id = int(data.split("_")[-1])
@@ -441,7 +446,7 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
         project_id = session.get("project_id")
         delete_project(conn, cursor, project_id)
         await query.message.reply_text(t("project_deleted", user.language))
-        await query.message.reply_text("👇", reply_markup=MAIN_MENU_KEYBOARD)
+        await query.message.reply_text("_", reply_markup=MAIN_MENU_KEYBOARD)
 
     elif data.startswith("eproject_name_"):
         project_id = int(data.split("_")[-1])
@@ -567,7 +572,7 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif data == "cancel_confirmation":
         clear_session(telegram_user_id)
         await query.message.reply_text(t("action_cancelled", user.language))
-        await query.message.reply_text("👇", reply_markup=MAIN_MENU_KEYBOARD)
+        await query.message.reply_text("_", reply_markup=MAIN_MENU_KEYBOARD)
 
     elif data == "menu_tasks":
         tasks = get_tasks_by_user_id(cursor, user.id, status="pending")
@@ -625,7 +630,7 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     elif data.startswith("plan_skip_"):
         await query.message.reply_text(t("planning_skipped", user.language))
-        await query.message.reply_text("👇", reply_markup=MAIN_MENU_KEYBOARD)
+        await query.message.reply_text("_", reply_markup=MAIN_MENU_KEYBOARD)
 
     elif data.startswith("complete_project_"):
         project_id = int(data.split("_")[-1])

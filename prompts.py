@@ -277,7 +277,7 @@ async def send_main_menu(sender, user):
         t("welcome_back", user.language).format(nickname=user.nickname),
         reply_markup=reply_markup
     )
-    await sender.reply_text("👇", reply_markup=MAIN_MENU_KEYBOARD)
+    await sender.reply_text("_", reply_markup=MAIN_MENU_KEYBOARD)
 
 async def send_goals_list(sender, goals, language="en-US"):
     keyboard = []
@@ -300,20 +300,20 @@ async def send_goals_list(sender, goals, language="en-US"):
     keyboard.append([InlineKeyboardButton("❌ " + t("btn_cancel", language), callback_data="main_menu")])
     reply_markup = InlineKeyboardMarkup(keyboard)
     await sender.reply_text(t("my_goals", language), reply_markup=reply_markup)
-    await sender.reply_text("👇", reply_markup=MAIN_MENU_KEYBOARD)
+    await sender.reply_text("_", reply_markup=MAIN_MENU_KEYBOARD)
 
 async def send_projects_list(sender, projects, language="en-US"):
     keyboard = []
     for project in sorted(projects, key=lambda project: project.name):
         if project.status == "completed":
-            keyboard.append([InlineKeyboardButton(f"🏁 {project.name} ✅", callback_data=f"project_tasks_{project.id}")])
+            keyboard.append([InlineKeyboardButton(f"🏁 {project.name} ✅", callback_data=f"project_details_{project.id}")])
             keyboard.append([
                 InlineKeyboardButton("🔄 " + t("btn_reopen", language), callback_data=f"reopen_project_{project.id}"),
                 InlineKeyboardButton("🗑️ " + t("btn_delete", language), callback_data=f"delete_project_{project.id}"),
                 InlineKeyboardButton("✅ " + t("btn_tasks", language), callback_data=f"project_tasks_{project.id}")
             ])
         else:
-            keyboard.append([InlineKeyboardButton(f"📁 {project.name}", callback_data=f"project_tasks_{project.id}")])
+            keyboard.append([InlineKeyboardButton(f"📁 {project.name}", callback_data=f"project_details_{project.id}")])
             keyboard.append([
                 InlineKeyboardButton("✏️ " + t("btn_edit", language), callback_data=f"edit_project_{project.id}"),
                 InlineKeyboardButton("🗑️ " + t("btn_delete", language), callback_data=f"delete_project_{project.id}"),
@@ -324,7 +324,7 @@ async def send_projects_list(sender, projects, language="en-US"):
     keyboard.append([InlineKeyboardButton("❌ " + t("btn_cancel", language), callback_data="main_menu")])
     reply_markup = InlineKeyboardMarkup(keyboard)
     await sender.reply_text(t("my_projects", language), reply_markup=reply_markup)
-    await sender.reply_text("👇", reply_markup=MAIN_MENU_KEYBOARD)
+    await sender.reply_text("_", reply_markup=MAIN_MENU_KEYBOARD)
 
 async def send_tasks_list(sender, tasks, language="en-US"):
     keyboard = []
@@ -339,7 +339,7 @@ async def send_tasks_list(sender, tasks, language="en-US"):
     keyboard.append([InlineKeyboardButton("❌ " + t("btn_cancel", language), callback_data="main_menu")])
     reply_markup = InlineKeyboardMarkup(keyboard)
     await sender.reply_text(t("my_tasks", language), reply_markup=reply_markup)
-    await sender.reply_text("👇", reply_markup=MAIN_MENU_KEYBOARD)
+    await sender.reply_text("_", reply_markup=MAIN_MENU_KEYBOARD)
 
 async def send_edit_project_menu(sender, project, language="en-US"):
     keyboard = [
@@ -389,4 +389,4 @@ async def send_settings_menu(sender, user):
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await sender.reply_text(t("settings", user.language), reply_markup=reply_markup)
-    await sender.reply_text("👇", reply_markup=MAIN_MENU_KEYBOARD)
+    await sender.reply_text("_", reply_markup=MAIN_MENU_KEYBOARD)
